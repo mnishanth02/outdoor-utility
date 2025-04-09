@@ -17,20 +17,27 @@ function generateGpxContent(gpxData: GpxData): string {
         return gpxData.rawXml;
     }
 
-    // Otherwise, generate a new GPX file from the data
-    const track = gpxData.tracks[0]; // For POC, we only use the first track
+    // Generate GPX for each track
+    const trackElements = gpxData.tracks.map((track, trackIndex) => {
+        const trackPoints = track.points.map((point: GpxPoint) => {
+            let pointXml = `<trkpt lat="${point.lat}" lon="${point.lon}">`;
+            if (point.ele !== undefined) {
+                pointXml += `<ele>${point.ele}</ele>`;
+            }
+            if (point.time) {
+                pointXml += `<time>${point.time}</time>`;
+            }
+            pointXml += "</trkpt>";
+            return pointXml;
+        }).join("\n        ");
 
-    const trackPoints = track.points.map((point: GpxPoint) => {
-        let pointXml = `<trkpt lat="${point.lat}" lon="${point.lon}">`;
-        if (point.ele !== undefined) {
-            pointXml += `<ele>${point.ele}</ele>`;
-        }
-        if (point.time) {
-            pointXml += `<time>${point.time}</time>`;
-        }
-        pointXml += "</trkpt>";
-        return pointXml;
-    }).join("\n        ");
+        return `  <trk>
+    <name>${track.name || gpxData.metadata.name || `Track ${trackIndex + 1}`}</name>
+    <trkseg>
+        ${trackPoints}
+    </trkseg>
+  </trk>`;
+    }).join("\n");
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx xmlns="http://www.topografix.com/GPX/1/1"
@@ -43,12 +50,7 @@ function generateGpxContent(gpxData: GpxData): string {
     ${gpxData.metadata.description ? `<desc>${gpxData.metadata.description}</desc>` : ""}
     ${gpxData.metadata.time ? `<time>${gpxData.metadata.time}</time>` : ""}
   </metadata>
-  <trk>
-    <name>${track.name || gpxData.metadata.name || "Unnamed Track"}</name>
-    <trkseg>
-        ${trackPoints}
-    </trkseg>
-  </trk>
+${trackElements}
 </gpx>`;
 
     return xml;
@@ -78,7 +80,10 @@ export function GpxExporter() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${gpxData.metadata.name || "track"}.gpx`;
+
+            // Use the metadata name or original filename if available, otherwise a default name
+            const fileName = `${gpxData.metadata.name || gpxData.fileName || "track"}.gpx`;
+            a.download = fileName;
 
             // Trigger download
             document.body.appendChild(a);

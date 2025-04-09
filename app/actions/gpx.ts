@@ -2,11 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 
-type UploadResult = {
+export type UploadResult = {
     success: boolean;
     error?: string;
     fileContent?: string;
     fileName?: string;
+};
+
+export type MultipleUploadResult = {
+    success: boolean;
+    error?: string;
+    files?: UploadResult[];
 };
 
 export async function uploadGpxFile(formData: FormData): Promise<UploadResult> {
@@ -61,6 +67,74 @@ export async function uploadGpxFile(formData: FormData): Promise<UploadResult> {
         return {
             success: false,
             error: "An error occurred while processing the file"
+        };
+    }
+}
+
+export async function uploadMultipleGpxFiles(formData: FormData): Promise<MultipleUploadResult> {
+    try {
+        const files = formData.getAll("gpxFiles") as File[];
+
+        if (!files || files.length === 0) {
+            return {
+                success: false,
+                error: "No files provided"
+            };
+        }
+
+        const uploadResults: UploadResult[] = [];
+        const maxSize = 10 * 1024 * 1024; // 10MB
+
+        // Process each file sequentially
+        for (const file of files) {
+            try {
+                // Validate file type
+                if (!file.name.toLowerCase().endsWith(".gpx")) {
+                    continue; // Skip non-GPX files
+                }
+
+                // Validate file size
+                if (file.size > maxSize) {
+                    continue; // Skip files that are too large
+                }
+
+                // Read the file content
+                const fileContent = await file.text();
+
+                // Basic validation
+                if (!fileContent.includes("<gpx") || !fileContent.includes("</gpx>")) {
+                    continue; // Skip invalid GPX files
+                }
+
+                // Add to results
+                uploadResults.push({
+                    success: true,
+                    fileContent,
+                    fileName: file.name
+                });
+            } catch (error) {
+                console.error(`Error processing file ${file.name}:`, error);
+                // Continue with next file
+            }
+        }
+
+        if (uploadResults.length === 0) {
+            return {
+                success: false,
+                error: "No valid GPX files were provided"
+            };
+        }
+
+        revalidatePath("/");
+        return {
+            success: true,
+            files: uploadResults
+        };
+    } catch (error) {
+        console.error("Error processing multiple GPX files:", error);
+        return {
+            success: false,
+            error: "An error occurred while processing the files"
         };
     }
 }

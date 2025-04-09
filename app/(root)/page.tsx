@@ -4,6 +4,7 @@ import { GpxMap } from "@/components/gpx/GpxMap";
 import { GpxMetadataEditor } from "@/components/gpx/GpxMetadataEditor";
 import { GpxPointEditor } from "@/components/gpx/GpxPointEditor";
 import { GpxExporter } from "@/components/gpx/GpxExporter";
+import { GpxFilesManager } from "@/components/gpx/GpxFilesManager";
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
 
       <div className="mx-auto w-full max-w-4xl space-y-8">
         <GpxFileUploader />
+        <GpxFilesManager />
         <GpxInfo />
         <GpxMap />
 

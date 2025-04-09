@@ -3,6 +3,10 @@ import type { GpxPoint, GpxTrack } from "@/contexts/GpxContext";
 /**
  * Calculate the distance between two GPS points using the Haversine formula.
  * This calculates the great-circle distance between two points on a sphere.
+ *
+ * @param p1 First GPS point
+ * @param p2 Second GPS point
+ * @returns Distance in meters
  */
 export function calculateDistance(p1: GpxPoint, p2: GpxPoint): number {
     const R = 6371000; // Earth's radius in meters
@@ -20,6 +24,9 @@ export function calculateDistance(p1: GpxPoint, p2: GpxPoint): number {
 
 /**
  * Calculate the total distance of a track in meters
+ *
+ * @param track GPX track
+ * @returns Total distance in meters
  */
 export function calculateTotalDistance(track: GpxTrack): number {
     const points = track.points;
@@ -34,22 +41,28 @@ export function calculateTotalDistance(track: GpxTrack): number {
 }
 
 /**
- * Calculate the elevation gain and loss from an array of track points
+ * Calculate the elevation gain and loss from a GPX track
+ *
+ * @param track GPX track or array of elevation values
+ * @returns Object with gain and loss values in meters
  */
-export function calculateElevation(track: GpxTrack): { gain: number; loss: number } {
-    const points = track.points;
+export function calculateElevation(trackOrElevations: GpxTrack | number[]): { gain: number; loss: number } {
     let gain = 0;
     let loss = 0;
 
-    if (points.length < 2) return { gain, loss };
+    // Handle different input types
+    const elevations = Array.isArray(trackOrElevations)
+        ? trackOrElevations
+        : trackOrElevations.points
+            .map(point => point.ele)
+            .filter((ele): ele is number => ele !== undefined);
 
-    for (let i = 1; i < points.length; i++) {
-        const current = points[i].ele;
-        const previous = points[i - 1].ele;
+    if (elevations.length < 2) {
+        return { gain, loss };
+    }
 
-        if (current === undefined || previous === undefined) continue;
-
-        const diff = current - previous;
+    for (let i = 1; i < elevations.length; i++) {
+        const diff = elevations[i] - elevations[i - 1];
         if (diff > 0) {
             gain += diff;
         } else {
@@ -62,7 +75,9 @@ export function calculateElevation(track: GpxTrack): { gain: number; loss: numbe
 
 /**
  * Calculate track duration if timestamps are available
- * Returns duration in seconds or null if timestamps are not available
+ *
+ * @param track GPX track
+ * @returns Duration in seconds or null if timestamps are not available
  */
 export function calculateDuration(track: GpxTrack): number | null {
     const points = track.points;
@@ -82,29 +97,94 @@ export function calculateDuration(track: GpxTrack): number | null {
 
 /**
  * Format a duration in seconds to a human-readable string
+ *
+ * @param seconds Duration in seconds
+ * @param detailed If true, returns detailed format (HH:MM:SS), otherwise returns simplified format (2h 30m)
+ * @returns Formatted duration string
  */
-export function formatDuration(seconds: number): string {
+export function formatDuration(seconds: number, detailed = false): string {
     if (seconds === null || Number.isNaN(seconds)) return "N/A";
 
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
 
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    if (detailed) {
+        const secs = Math.floor(seconds % 60);
+        return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    }
+
+    return `${minutes}m`;
 }
 
 /**
  * Format a distance in meters to a human-readable string
+ *
+ * @param meters Distance in meters
+ * @returns Formatted distance string
  */
-export function formatDistance(meters: number): string {
+export function formatDistance(
+    distance: number | GpxPoint | number,
+    lon1?: number,
+    lat2?: number,
+    lon2?: number,
+    rawNumber = false
+): string | number {
+    let meters: number;
+
+    // Handle different input types
+    if (typeof distance === 'object') {
+        // Called with two GpxPoints
+        if (typeof lon1 === 'object') {
+            meters = calculateDistance(distance, lon1);
+        } else {
+            throw new Error('Invalid parameters for formatDistance');
+        }
+    } else if (typeof lat2 === 'number' && typeof lon1 === 'number' && typeof lon2 === 'number') {
+        // Called with coordinates
+        const lat1 = distance as number;
+
+        // Convert latitude and longitude from degrees to radians
+        const radLat1 = (lat1 * Math.PI) / 180;
+        const radLon1 = (lon1 * Math.PI) / 180;
+        const radLat2 = (lat2 * Math.PI) / 180;
+        const radLon2 = (lon2 * Math.PI) / 180;
+
+        // Haversine formula
+        const R = 6371000; // Earth's radius in meters
+        const dLat = radLat2 - radLat1;
+        const dLon = radLon2 - radLon1;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(radLat1) * Math.cos(radLat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        meters = R * c;
+
+        // If raw number requested in kilometers
+        if (rawNumber) {
+            return meters / 1000;
+        }
+    } else {
+        // Called with a distance in meters
+        meters = distance as number;
+    }
+
+    // Format the distance string
     if (meters < 1000) {
         return `${Math.round(meters)} m`;
     }
+
     return `${(meters / 1000).toFixed(2)} km`;
 }
 
 /**
  * Calculate the center point of a track
+ *
+ * @param points Array of GpxPoints
+ * @returns Center point {lat, lon}
  */
 export function calculateCenter(points: GpxPoint[]): { lat: number; lon: number } {
     if (points.length === 0) {
@@ -123,4 +203,14 @@ export function calculateCenter(points: GpxPoint[]): { lat: number; lon: number 
         lat: sumLat / points.length,
         lon: sumLon / points.length,
     };
+}
+
+/**
+ * Formats an elevation value to a human-readable format
+ *
+ * @param elevation Elevation in meters
+ * @returns Formatted elevation string
+ */
+export function formatElevation(elevation: number): string {
+    return `${elevation.toFixed(0)} m`;
 }
