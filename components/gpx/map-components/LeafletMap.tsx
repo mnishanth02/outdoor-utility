@@ -27,11 +27,11 @@ if (typeof window !== "undefined") {
 }
 
 // Component to auto-adjust the map view to fit the route
-function MapViewAdapter({ points }: { points: Array<[number, number]> }) {
+function MapViewAdapter({ points, shouldUpdate }: { points: Array<[number, number]>; shouldUpdate: boolean }) {
     const map = useMap();
 
     useEffect(() => {
-        if (points.length === 0) return;
+        if (points.length === 0 || !shouldUpdate) return;
 
         // If there's only one point, just center on it
         if (points.length === 1) {
@@ -46,7 +46,7 @@ function MapViewAdapter({ points }: { points: Array<[number, number]> }) {
             maxZoom: 16,
             animate: true,
         });
-    }, [map, points]);
+    }, [map, points, shouldUpdate]);
 
     return null;
 }
@@ -126,6 +126,7 @@ export default function LeafletMap({
     const [editMode, setEditMode] = useState<boolean>(isEditing);
     const [editedPoints, setEditedPoints] = useState<GpxPoint[]>(points);
     const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
+    const [shouldUpdateView, setShouldUpdateView] = useState<boolean>(true);
 
     // Update internal editMode when the isEditing prop changes
     useEffect(() => {
@@ -148,6 +149,8 @@ export default function LeafletMap({
     // Update local state when points prop changes
     useEffect(() => {
         setEditedPoints(points);
+        // Only update the view when points are loaded initially or when editing mode changes
+        setShouldUpdateView(true);
     }, [points]);
 
     // Handle marker drag end
@@ -156,6 +159,7 @@ export default function LeafletMap({
         const newPoints = [...editedPoints];
         newPoints[index] = { ...newPoints[index], lat, lon };
         setEditedPoints(newPoints);
+        setShouldUpdateView(false); // Don't adjust view when dragging
 
         // Notify parent component if callback is provided
         if (onPointsChange) {
@@ -177,6 +181,7 @@ export default function LeafletMap({
             newPoints.splice(selectedPointIndex + 1, 0, newPoint);
             setEditedPoints(newPoints);
             setSelectedPointIndex(selectedPointIndex + 1);
+            setShouldUpdateView(false); // Don't adjust view when adding points
 
             // Notify parent component
             if (onPointsChange) {
@@ -196,6 +201,7 @@ export default function LeafletMap({
         newPoints.splice(selectedPointIndex, 1);
         setEditedPoints(newPoints);
         setSelectedPointIndex(null);
+        setShouldUpdateView(false); // Don't adjust view when deleting points
 
         // Notify parent component
         if (onPointsChange) {
@@ -209,6 +215,7 @@ export default function LeafletMap({
             onPointsChange(editedPoints);
         }
         setEditMode(false);
+        setShouldUpdateView(true); // Update view when saving changes
     };
 
     return (
@@ -305,7 +312,7 @@ export default function LeafletMap({
                         ) }
 
                         {/* Auto-fit the map to the track */ }
-                        <MapViewAdapter points={ coordinates } />
+                        <MapViewAdapter points={ coordinates } shouldUpdate={ shouldUpdateView } />
                     </MapContainer>
 
                     {/* Map controls */ }

@@ -1,24 +1,28 @@
-import type { GpxPoint, GpxTrack } from "@/contexts/GpxContext";
+import type { GpxData, GpxPoint, GpxTrack } from "@/contexts/GpxContext";
 
 /**
  * Calculate the distance between two GPS points using the Haversine formula.
  * This calculates the great-circle distance between two points on a sphere.
  *
- * @param p1 First GPS point
- * @param p2 Second GPS point
+ * @param point1 First point with lat/lon coordinates
+ * @param point2 Second point with lat/lon coordinates
  * @returns Distance in meters
  */
-export function calculateDistance(p1: GpxPoint, p2: GpxPoint): number {
+export function calculateDistance(
+    point1: { lat: number; lon: number },
+    point2: { lat: number; lon: number }
+): number {
     const R = 6371000; // Earth's radius in meters
-    const dLat = ((p2.lat - p1.lat) * Math.PI) / 180;
-    const dLon = ((p2.lon - p1.lon) * Math.PI) / 180;
+    const φ1 = (point1.lat * Math.PI) / 180; // φ, λ in radians
+    const φ2 = (point2.lat * Math.PI) / 180;
+    const Δφ = ((point2.lat - point1.lat) * Math.PI) / 180;
+    const Δλ = ((point2.lon - point1.lon) * Math.PI) / 180;
+
     const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos((p1.lat * Math.PI) / 180) *
-        Math.cos((p2.lat * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
     return R * c; // Distance in meters
 }
 
@@ -46,7 +50,10 @@ export function calculateTotalDistance(track: GpxTrack): number {
  * @param track GPX track or array of elevation values
  * @returns Object with gain and loss values in meters
  */
-export function calculateElevation(trackOrElevations: GpxTrack | number[]): { gain: number; loss: number } {
+export function calculateElevation(trackOrElevations: GpxTrack | number[]): {
+    gain: number;
+    loss: number;
+} {
     let gain = 0;
     let loss = 0;
 
@@ -54,7 +61,7 @@ export function calculateElevation(trackOrElevations: GpxTrack | number[]): { ga
     const elevations = Array.isArray(trackOrElevations)
         ? trackOrElevations
         : trackOrElevations.points
-            .map(point => point.ele)
+            .map((point) => point.ele)
             .filter((ele): ele is number => ele !== undefined);
 
     if (elevations.length < 2) {
@@ -131,19 +138,19 @@ export function formatDistance(
     lon1?: number,
     lat2?: number,
     lon2?: number,
-    rawNumber = false
+    rawNumber = false,
 ): string | number {
     let meters: number;
 
     // Handle different input types
-    if (typeof distance === 'object') {
+    if (typeof distance === "object") {
         // Called with two GpxPoints
-        if (typeof lon1 === 'object') {
+        if (typeof lon1 === "object") {
             meters = calculateDistance(distance, lon1);
         } else {
-            throw new Error('Invalid parameters for formatDistance');
+            throw new Error("Invalid parameters for formatDistance");
         }
-    } else if (typeof lat2 === 'number' && typeof lon1 === 'number' && typeof lon2 === 'number') {
+    } else if (typeof lat2 === "number" && typeof lon1 === "number" && typeof lon2 === "number") {
         // Called with coordinates
         const lat1 = distance as number;
 
@@ -181,27 +188,41 @@ export function formatDistance(
 }
 
 /**
- * Calculate the center point of a track
+ * Calculate the center point of a set of coordinates
  *
- * @param points Array of GpxPoints
+ * @param points Array of points with lat/lon coordinates
  * @returns Center point {lat, lon}
  */
-export function calculateCenter(points: GpxPoint[]): { lat: number; lon: number } {
+export function calculateCenter(points: { lat: number; lon: number }[]): {
+    lat: number;
+    lon: number;
+} {
     if (points.length === 0) {
         return { lat: 0, lon: 0 };
     }
 
-    let sumLat = 0;
-    let sumLon = 0;
-
-    for (const point of points) {
-        sumLat += point.lat;
-        sumLon += point.lon;
+    if (points.length === 1) {
+        return { lat: points[0].lat, lon: points[0].lon };
     }
 
+    // Calculate bounds first
+    let minLat = points[0].lat;
+    let maxLat = points[0].lat;
+    let minLon = points[0].lon;
+    let maxLon = points[0].lon;
+
+    for (let i = 1; i < points.length; i++) {
+        const { lat, lon } = points[i];
+        minLat = Math.min(minLat, lat);
+        maxLat = Math.max(maxLat, lat);
+        minLon = Math.min(minLon, lon);
+        maxLon = Math.max(maxLon, lon);
+    }
+
+    // Center is the midpoint of the bounds
     return {
-        lat: sumLat / points.length,
-        lon: sumLon / points.length,
+        lat: (minLat + maxLat) / 2,
+        lon: (minLon + maxLon) / 2,
     };
 }
 
@@ -269,14 +290,15 @@ function perpendicularDistance(point: GpxPoint, lineStart: GpxPoint, lineEnd: Gp
     // This is an approximation that works well for short distances
     const earthRadius = 6371000; // Earth radius in meters
 
-    const x1 = lineStart.lon * Math.cos(lineStart.lat * Math.PI / 180) * earthRadius * Math.PI / 180;
-    const y1 = lineStart.lat * earthRadius * Math.PI / 180;
+    const x1 =
+        (lineStart.lon * Math.cos((lineStart.lat * Math.PI) / 180) * earthRadius * Math.PI) / 180;
+    const y1 = (lineStart.lat * earthRadius * Math.PI) / 180;
 
-    const x2 = lineEnd.lon * Math.cos(lineEnd.lat * Math.PI / 180) * earthRadius * Math.PI / 180;
-    const y2 = lineEnd.lat * earthRadius * Math.PI / 180;
+    const x2 = (lineEnd.lon * Math.cos((lineEnd.lat * Math.PI) / 180) * earthRadius * Math.PI) / 180;
+    const y2 = (lineEnd.lat * earthRadius * Math.PI) / 180;
 
-    const x = point.lon * Math.cos(point.lat * Math.PI / 180) * earthRadius * Math.PI / 180;
-    const y = point.lat * earthRadius * Math.PI / 180;
+    const x = (point.lon * Math.cos((point.lat * Math.PI) / 180) * earthRadius * Math.PI) / 180;
+    const y = (point.lat * earthRadius * Math.PI) / 180;
 
     // Line length
     const lineLength = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
@@ -303,4 +325,80 @@ function perpendicularDistance(point: GpxPoint, lineStart: GpxPoint, lineEnd: Gp
     const projY = y1 + t * (y2 - y1);
 
     return Math.sqrt((x - projX) ** 2 + (y - projY) ** 2);
+}
+
+// Convert GpxData to GPX XML string
+export function convert(gpxData: GpxData): string {
+    const { metadata, tracks } = gpxData;
+
+    // Format current datetime in ISO format if no time is provided
+    const timeString = metadata.time || new Date().toISOString();
+
+    // Create XML header
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<gpx xmlns="http://www.topografix.com/GPX/1/1" ';
+    xml += 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ';
+    xml +=
+        'xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" ';
+    xml += 'version="1.1" creator="OutdoorConnect">\n';
+
+    // Add metadata
+    xml += '  <metadata>\n';
+    if (metadata.name) {
+        xml += `    <name>${escapeXml(metadata.name)}</name>\n`;
+    }
+    if (metadata.description) {
+        xml += `    <desc>${escapeXml(metadata.description)}</desc>\n`;
+    }
+    xml += `    <time>${timeString}</time>\n`;
+    xml += '  </metadata>\n';
+
+    // Add tracks
+    for (const track of tracks) {
+        xml += '  <trk>\n';
+        if (track.name) {
+            xml += `    <name>${escapeXml(track.name)}</name>\n`;
+        }
+        xml += '    <trkseg>\n';
+
+        // Add track points
+        for (const point of track.points) {
+            xml += `      <trkpt lat="${point.lat}" lon="${point.lon}">\n`;
+            if (point.ele !== undefined) {
+                xml += `        <ele>${point.ele}</ele>\n`;
+            }
+            if (point.time) {
+                xml += `        <time>${point.time}</time>\n`;
+            }
+            xml += "      </trkpt>\n";
+        }
+
+        xml += "    </trkseg>\n";
+        xml += "  </trk>\n";
+    }
+
+    // Close GPX tag
+    xml += "</gpx>";
+
+    return xml;
+}
+
+// Helper function to escape special characters in XML
+function escapeXml(unsafe: string): string {
+    return unsafe.replace(/[<>&'"]/g, (c) => {
+        switch (c) {
+            case "<":
+                return "&lt;";
+            case ">":
+                return "&gt;";
+            case "&":
+                return "&amp;";
+            case "'":
+                return "&apos;";
+            case '"':
+                return "&quot;";
+            default:
+                return c;
+        }
+    });
 }

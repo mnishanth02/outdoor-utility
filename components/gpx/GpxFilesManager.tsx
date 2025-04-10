@@ -13,19 +13,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
-import { CheckSquare, Eye, Trash2, FileX } from "lucide-react";
+import { CheckSquare, Eye, Trash2, FileX, Maximize2, Edit, RefreshCcw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { calculateDistance } from "@/lib/gpx-utils";
 
 export function GpxFilesManager() {
-    const { storedFiles, setActiveFile, removeStoredFile, gpxData } = useGpx();
+    const { storedFiles, setActiveFile, removeStoredFile, gpxData, isLoading, error } = useGpx();
     const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-
-    // No files to display
-    if (!storedFiles || storedFiles.length === 0) {
-        return null;
-    }
+    const [fullscreenFileId, setFullscreenFileId] = useState<string | null>(null);
+    const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
 
     const handleToggleFile = (fileId: string) => {
         setSelectedFiles((prev) =>
@@ -46,6 +44,31 @@ export function GpxFilesManager() {
             .map((file) => file.id as string);
 
         setSelectedFiles(fileIds);
+    };
+
+    const handleToggleFullscreen = (fileId: string) => {
+        if (fileId === fullscreenFileId) {
+            setFullscreenFileId(null);
+        } else {
+            setFullscreenFileId(fileId);
+            setActiveFile(fileId);
+        }
+    };
+
+    const handleRemoveFile = (fileId: string) => {
+        // Get file name before removing
+        const fileName = storedFiles.find((file) => file.id === fileId)?.metadata.name || "File";
+
+        removeStoredFile(fileId);
+
+        // Show success message
+        setDeleteSuccess(`"${fileName}" has been removed`);
+        setTimeout(() => setDeleteSuccess(null), 3000);
+
+        // Remove from selected files if needed
+        if (selectedFiles.includes(fileId)) {
+            setSelectedFiles((prev) => prev.filter((id) => id !== fileId));
+        }
     };
 
     const getTrackStatistics = (file: (typeof storedFiles)[0]) => {
@@ -72,6 +95,68 @@ export function GpxFilesManager() {
         };
     };
 
+    // Loading state
+    if (isLoading) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Manage GPX Files</CardTitle>
+                    <CardDescription>Loading your GPX files...</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center py-12">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                        <RefreshCcw className="h-8 w-8 animate-spin text-muted-foreground" />
+                        <p>Loading files...</p>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Manage GPX Files</CardTitle>
+                    <CardDescription>There was an error loading your files</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertDescription>{ error }</AlertDescription>
+                    </Alert>
+                    <div className="mt-6 flex justify-center">
+                        <Button variant="secondary" onClick={ () => window.location.reload() }>
+                            <RefreshCcw className="mr-2 h-4 w-4" />
+                            Reload page
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    // No files to display
+    if (!storedFiles || storedFiles.length === 0) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Manage GPX Files</CardTitle>
+                    <CardDescription>No GPX files available</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                        <FileX className="mb-4 h-16 w-16" />
+                        <h3 className="mb-2 font-medium text-lg">No GPX files uploaded yet</h3>
+                        <p className="mb-6 max-w-md text-center text-sm">
+                            Upload a GPX file to view, edit and manage your outdoor tracks
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -82,6 +167,13 @@ export function GpxFilesManager() {
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
+                    { deleteSuccess && (
+                        <div className="mb-4 flex items-center rounded-md border border-green-200 bg-green-50 p-3 text-green-600 text-sm">
+                            <CheckSquare className="mr-2 h-5 w-5" />
+                            <span>{ deleteSuccess }</span>
+                        </div>
+                    ) }
+
                     <div className="flex items-center justify-between">
                         <Button variant="outline" size="sm" onClick={ handleSelectAll }>
                             <CheckSquare className="mr-2 h-4 w-4" />
@@ -149,10 +241,38 @@ export function GpxFilesManager() {
                                                     <TooltipProvider>
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
+                                                                <Button variant="ghost" size="icon" asChild>
+                                                                    <Link href={ `/edit/${file.id}` }>
+                                                                        <Edit className="h-4 w-4" />
+                                                                    </Link>
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Edit file</TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    onClick={ () => removeStoredFile(file.id || "") }
+                                                                    onClick={ () => handleToggleFullscreen(file.id || "") }
+                                                                >
+                                                                    <Maximize2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Fullscreen view</TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={ () => handleRemoveFile(file.id || "") }
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
                                                                 </Button>
@@ -165,17 +285,6 @@ export function GpxFilesManager() {
                                         </TableRow>
                                     );
                                 }) }
-
-                                { storedFiles.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={ 5 } className="py-6 text-center">
-                                            <div className="flex flex-col items-center justify-center text-muted-foreground">
-                                                <FileX className="mb-2 h-8 w-8" />
-                                                <p>No GPX files uploaded yet</p>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ) }
                             </TableBody>
                         </Table>
                     </div>
