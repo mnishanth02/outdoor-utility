@@ -25,6 +25,11 @@ import {
     ArrowUpDown,
     ChevronUp,
     ChevronDown,
+    MapPin,
+    FileText,
+    Clock,
+    Ruler,
+    Award,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -159,9 +164,12 @@ export function GpxTrackManager() {
     // Loading state
     if (isLoading) {
         return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>GPX Track Manager</CardTitle>
+            <Card className="border-2 shadow-md">
+                <CardHeader className="bg-muted/20">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                        <FileText className="h-5 w-5 text-primary" />
+                        GPX Track Manager
+                    </CardTitle>
                     <CardDescription>Loading your GPX files...</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center py-12">
@@ -177,9 +185,12 @@ export function GpxTrackManager() {
     // Error state
     if (error) {
         return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>GPX Track Manager</CardTitle>
+            <Card className="border-2 shadow-md">
+                <CardHeader className="bg-muted/20">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                        <FileText className="h-5 w-5 text-primary" />
+                        GPX Track Manager
+                    </CardTitle>
                     <CardDescription>There was an error loading your files</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -200,9 +211,12 @@ export function GpxTrackManager() {
     // No files to display
     if (!storedFiles || storedFiles.length === 0) {
         return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>GPX Track Manager</CardTitle>
+            <Card className="border-2 shadow-md">
+                <CardHeader className="bg-muted/20">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                        <FileText className="h-5 w-5 text-primary" />
+                        GPX Track Manager
+                    </CardTitle>
                     <CardDescription>No GPX files available</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -280,43 +294,31 @@ export function GpxTrackManager() {
     };
 
     return (
-        <Card className="shadow-sm">
-            <CardHeader>
-                <CardTitle>GPX Track Manager</CardTitle>
-                <CardDescription>
-                    { storedFiles.length } GPX file(s) available for viewing, editing and merging
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    { deleteSuccess && (
-                        <div className="mb-4 flex items-center rounded-md border-green-100 bg-green-50 p-3 text-green-600 text-sm">
-                            <CheckSquare className="mr-2 h-5 w-5" />
-                            <span>{ deleteSuccess }</span>
-                        </div>
-                    ) }
+        <Card className="overflow-hidden border-2 border-muted-foreground/10 shadow-md">
+            <CardHeader className="bg-muted/20 pb-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2 text-xl">
+                            <FileText className="h-5 w-5 text-primary" />
+                            GPX Track Manager
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                            <span className="font-medium text-primary">{ storedFiles.length }</span> GPX file(s)
+                            available for viewing, editing and merging
+                        </CardDescription>
+                    </div>
 
-                    { downloadSuccess && (
-                        <div className="mb-4 flex items-center rounded-md border-green-100 bg-green-50 p-3 text-green-600 text-sm">
-                            <Download className="mr-2 h-5 w-5" />
-                            <span>{ downloadSuccess }</span>
-                        </div>
-                    ) }
-
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="hidden md:flex md:items-center md:gap-2">
                         <Button variant="outline" size="sm" onClick={ handleSelectAll }>
                             <CheckSquare className="mr-2 h-4 w-4" />
                             { selectedFileIds.length === storedFiles.length ? "Deselect All" : "Select All" }
                         </Button>
 
                         <Button
-                            variant={ hasEnoughFilesForMerge ? "default" : "outline" }
+                            variant="outline"
                             size="sm"
                             disabled={ !hasEnoughFilesForMerge }
                             onClick={ handleMergeSelected }
-                            className={
-                                hasEnoughFilesForMerge ? "animate-pulse bg-primary text-primary-foreground" : ""
-                            }
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -339,61 +341,125 @@ export function GpxTrackManager() {
                                 <path d="M20 14v4h-4" />
                                 <path d="M4 14v4h4" />
                             </svg>
-                            Merge Selected ({ selectedFileIds.length })
+                            Merge ({ selectedFileIds.length })
+                        </Button>
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent className="p-0">
+                <div className="space-y-4">
+                    { (deleteSuccess || downloadSuccess) && (
+                        <div className="px-6 pt-6">
+                            { deleteSuccess && (
+                                <div className="mb-4 flex items-center rounded-md border-green-100 bg-green-50 p-3 text-green-600 text-sm">
+                                    <CheckSquare className="mr-2 h-5 w-5" />
+                                    <span>{ deleteSuccess }</span>
+                                </div>
+                            ) }
+
+                            { downloadSuccess && (
+                                <div className="mb-4 flex items-center rounded-md border-green-100 bg-green-50 p-3 text-green-600 text-sm">
+                                    <Download className="mr-2 h-5 w-5" />
+                                    <span>{ downloadSuccess }</span>
+                                </div>
+                            ) }
+                        </div>
+                    ) }
+
+                    <div className="flex items-center justify-between px-6 pt-4 md:hidden">
+                        <Button variant="outline" size="sm" onClick={ handleSelectAll }>
+                            <CheckSquare className="mr-2 h-4 w-4" />
+                            { selectedFileIds.length === storedFiles.length ? "Deselect All" : "Select All" }
+                        </Button>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={ !hasEnoughFilesForMerge }
+                            onClick={ handleMergeSelected }
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="mr-2"
+                            >
+                                <path d="m8 6 4-4 4 4" />
+                                <path d="M12 2v10.3" />
+                                <path d="m8 16 4 4 4-4" />
+                                <path d="M12 20v-4" />
+                                <path d="M20 10v.3c0 1.5-.5 3-1.4 4.2" />
+                                <path d="M4 10v.3c0 1.5.5 3 1.4 4.2" />
+                                <path d="M20 14v4h-4" />
+                                <path d="M4 14v4h4" />
+                            </svg>
+                            Merge ({ selectedFileIds.length })
                         </Button>
                     </div>
 
-                    <div className="rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[40px]" />
-                                    <TableHead>
+                    <div className="border-t">
+                        <Table className="w-full">
+                            <TableHeader className="bg-muted/5">
+                                <TableRow className="border-b hover:bg-muted/10">
+                                    <TableHead className="w-[50px] p-3" />
+                                    <TableHead className="p-3">
                                         <div
                                             className="flex cursor-pointer items-center"
                                             onClick={ () => handleSort("name") }
                                         >
+                                            <FileText className="mr-1 h-4 w-4 text-muted-foreground" />
                                             Name
                                             <SortIcon field="name" />
                                         </div>
                                     </TableHead>
-                                    <TableHead>
+                                    <TableHead className="p-3">
                                         <div
                                             className="flex cursor-pointer items-center"
                                             onClick={ () => handleSort("points") }
                                         >
+                                            <MapPin className="mr-1 h-4 w-4 text-muted-foreground" />
                                             Points
                                             <SortIcon field="points" />
                                         </div>
                                     </TableHead>
-                                    <TableHead>
+                                    <TableHead className="p-3">
                                         <div
                                             className="flex cursor-pointer items-center"
                                             onClick={ () => handleSort("distance") }
                                         >
+                                            <Ruler className="mr-1 h-4 w-4 text-muted-foreground" />
                                             Distance
                                             <SortIcon field="distance" />
                                         </div>
                                     </TableHead>
-                                    <TableHead>
+                                    <TableHead className="p-3">
                                         <div
                                             className="flex cursor-pointer items-center"
                                             onClick={ () => handleSort("duration") }
                                         >
+                                            <Clock className="mr-1 h-4 w-4 text-muted-foreground" />
                                             Duration
                                             <SortIcon field="duration" />
                                         </div>
                                     </TableHead>
-                                    <TableHead>
+                                    <TableHead className="p-3">
                                         <div
                                             className="flex cursor-pointer items-center"
                                             onClick={ () => handleSort("elevation") }
                                         >
+                                            <Award className="mr-1 h-4 w-4 text-muted-foreground" />
                                             Elevation
                                             <SortIcon field="elevation" />
                                         </div>
                                     </TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead className="p-3 text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -404,36 +470,40 @@ export function GpxTrackManager() {
                                         <TableRow
                                             key={ track.id }
                                             className={ `
-                                                ${track.isActive ? "bg-accent/30" : ""}
-                                                ${track.isSelected ? "bg-primary/10" : ""}hover:bg-primary/5 cursor-pointer ` }
+                                                ${track.isActive ? "bg-accent/20" : ""}
+                                                ${track.isSelected ? "bg-primary/5" : ""}hover:bg-muted/5 cursor-pointer ` }
                                             onClick={ () => handleToggleFile(track.id || "") }
                                         >
-                                            <TableCell onClick={ (e) => e.stopPropagation() }>
+                                            <TableCell className="p-3" onClick={ (e) => e.stopPropagation() }>
                                                 <Checkbox
                                                     checked={ track.isSelected }
                                                     onCheckedChange={ () => handleToggleFile(track.id || "") }
                                                     aria-label={ `Select ${track.name}` }
+                                                    className="border-primary/50"
                                                 />
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="p-3">
                                                 <div className="font-medium">{ track.name }</div>
                                                 <div className="text-muted-foreground text-xs">{ track.fileName }</div>
                                                 <div className="mt-1 flex gap-1">
                                                     { track.isActive && (
-                                                        <Badge variant="outline" className="w-fit bg-blue-50 text-blue-600">
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="w-fit bg-accent/20 text-accent-foreground"
+                                                        >
                                                             Active
                                                         </Badge>
                                                     ) }
                                                     { track.isSelected && (
-                                                        <Badge variant="outline" className="w-fit bg-green-50 text-green-600">
+                                                        <Badge variant="outline" className="w-fit bg-primary/5 text-primary">
                                                             Selected
                                                         </Badge>
                                                     ) }
                                                 </div>
                                             </TableCell>
-                                            <TableCell>{ track.points }</TableCell>
-                                            <TableCell>{ track.formattedDistance }</TableCell>
-                                            <TableCell>{ track.formattedDuration }</TableCell>
+                                            <TableCell className="p-3">{ track.points }</TableCell>
+                                            <TableCell className="p-3">{ track.formattedDistance }</TableCell>
+                                            <TableCell className="p-3">{ track.formattedDuration }</TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col gap-1">
                                                     <span className="flex items-center gap-1 text-green-600 text-xs">
@@ -466,7 +536,7 @@ export function GpxTrackManager() {
                                                     </span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right" onClick={ (e) => e.stopPropagation() }>
+                                            <TableCell className="p-3 text-right" onClick={ (e) => e.stopPropagation() }>
                                                 <div className="flex justify-end space-x-2">
                                                     <TooltipProvider>
                                                         <Tooltip>

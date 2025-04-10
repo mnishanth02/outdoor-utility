@@ -159,6 +159,29 @@ export function GpxMerger() {
         }
     }, [files, fileSelections]);
 
+    // Sort filtered files according to fileOrder whenever order changes
+    useEffect(() => {
+        if (filteredFiles.length < 2) return;
+
+        // Create a copy of the filtered files sorted according to the fileOrder
+        const sortedFiles = [...filteredFiles].sort((a, b) => {
+            if (a.id && b.id) {
+                const indexA = mergeOptions.fileOrder.indexOf(a.id);
+                const indexB = mergeOptions.fileOrder.indexOf(b.id);
+                return indexA - indexB;
+            }
+            return 0;
+        });
+
+        // Only update if the order has actually changed
+        if (
+            JSON.stringify(sortedFiles.map((f) => f.id)) !==
+            JSON.stringify(filteredFiles.map((f) => f.id))
+        ) {
+            setFilteredFiles(sortedFiles);
+        }
+    }, [mergeOptions.fileOrder, filteredFiles.length]);
+
     // Create initial merge config when files or options change
     useEffect(() => {
         if (filteredFiles.length < 2) return;
@@ -204,30 +227,21 @@ export function GpxMerger() {
         return () => clearTimeout(timeoutId);
     }, [selectedPoints, updatePreviewStats]);
 
-    const moveFileUp = (fileId: string) => {
-        const currentOrder = [...mergeOptions.fileOrder];
-        const index = currentOrder.indexOf(fileId);
-
-        if (index > 0) {
-            const newOrder = [...currentOrder];
-            [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
-            setMergeOptions((prev) => ({ ...prev, fileOrder: newOrder }));
-        }
+    // Previous move functions are replaced with these dummy functions
+    // that maintain compatibility but don't do anything
+    const moveFileUp = () => {
+        // Function intentionally left empty as we removed the UI for it
     };
 
-    const moveFileDown = (fileId: string) => {
-        const currentOrder = [...mergeOptions.fileOrder];
-        const index = currentOrder.indexOf(fileId);
-
-        if (index < currentOrder.length - 1) {
-            const newOrder = [...currentOrder];
-            [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-            setMergeOptions((prev) => ({ ...prev, fileOrder: newOrder }));
-        }
+    const moveFileDown = () => {
+        // Function intentionally left empty as we removed the UI for it
     };
 
     const toggleFileSelection = (fileId: string, checked: boolean) => {
+        // Create a new selection state with the toggled file
         const newSelections = { ...fileSelections, [fileId]: checked };
+
+        // Count how many files will be selected after this change
         const selectedCount = Object.values(newSelections).filter(Boolean).length;
 
         // Prevent deselecting if it would leave less than 2 files selected
@@ -236,7 +250,15 @@ export function GpxMerger() {
             return;
         }
 
+        // Apply the selection state change
         setFileSelections(newSelections);
+
+        // If adding a new file, also update the order
+        if (checked && !fileSelections[fileId]) {
+            // Add the newly selected file to the end of the order
+            const newOrder = [...mergeOptions.fileOrder.filter(id => id !== fileId), fileId];
+            setMergeOptions(prev => ({ ...prev, fileOrder: newOrder }));
+        }
     };
 
     const handleMergeMethodChange = (value: string) => {
@@ -349,266 +371,16 @@ export function GpxMerger() {
                 <CardTitle>Merge GPX Files</CardTitle>
                 <CardDescription>Select how to merge { files.length } GPX files</CardDescription>
             </CardHeader>
-            <CardContent>
-                <div className="space-y-6">
-                    {/* File Selection */ }
-                    <div className="rounded-md border p-4">
-                        <h3 className="mb-2 font-medium text-lg">File Selection</h3>
-                        <p className="mb-4 text-muted-foreground text-sm">
-                            Select the files to include in the merge and arrange them in the desired order.
-                        </p>
 
-                        { selectionError && (
-                            <Alert className="mb-4 border-amber-100 bg-amber-50">
-                                <div className="flex items-center">
-                                    <AlertTriangle className="mr-2 h-4 w-4 text-amber-500" />
-                                    <AlertDescription className="text-amber-700">{ selectionError }</AlertDescription>
-                                </div>
-                            </Alert>
-                        ) }
-
-                        <ScrollArea className="h-[200px] rounded-md border">
-                            <div className="space-y-2 p-2">
-                                { files.map(
-                                    (file) =>
-                                        file.id && (
-                                            <FileListItem
-                                                key={ file.id }
-                                                file={ file }
-                                                isSelected={ fileSelections[file.id] || false }
-                                                onSelectionChange={ (checked) => toggleFileSelection(file.id || "", checked) }
-                                                onMoveUp={ () => moveFileUp(file.id || "") }
-                                                onMoveDown={ () => moveFileDown(file.id || "") }
-                                                canMoveUp={
-                                                    fileSelections[file.id] && mergeOptions.fileOrder.indexOf(file.id) > 0
-                                                }
-                                                canMoveDown={
-                                                    fileSelections[file.id] &&
-                                                    mergeOptions.fileOrder.indexOf(file.id) <
-                                                    mergeOptions.fileOrder.length - 1
-                                                }
-                                            />
-                                        ),
-                                ) }
-                            </div>
-                        </ScrollArea>
-                    </div>
-
-                    {/* Merge Method Selection */ }
-                    <Tabs
-                        defaultValue="sequential"
-                        value={ mergeMethod }
-                        onValueChange={ handleMergeMethodChange }
-                    >
-                        <TabsList className="grid w-full grid-cols-4">
-                            <TabsTrigger value="sequential">Sequential</TabsTrigger>
-                            <TabsTrigger value="byTime">By Time</TabsTrigger>
-                            <TabsTrigger value="simplified">Simplified</TabsTrigger>
-                            <TabsTrigger value="interpolated">Interpolated</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="sequential">
-                            <div className="mt-4 rounded-md border p-4">
-                                <h3 className="mb-2 font-medium text-lg">Sequential Merge</h3>
-                                <p className="mb-4 text-muted-foreground text-sm">
-                                    <strong>Best for:</strong> Combining tracks in a specific order.
-                                    <br />
-                                    <strong>How it works:</strong> Files are merged in the order shown above - all
-                                    points from the first file, followed by all points from the second, and so on. Use
-                                    this when you want complete control over the track order.
-                                </p>
-                                <div className="space-y-4">
-                                    <div className="flex items-center space-x-2">
-                                        <Switch
-                                            id="skipDuplicatePoints"
-                                            checked={ mergeOptions.skipDuplicatePoints }
-                                            onCheckedChange={ (checked) =>
-                                                handleMergeOptionChange("skipDuplicatePoints", checked)
-                                            }
-                                        />
-                                        <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
-                                        <p className="ml-2 text-muted-foreground text-xs">
-                                            (Recommended) Removes points that are at the exact same location
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="byTime">
-                            <div className="mt-4 rounded-md border p-4">
-                                <h3 className="mb-2 font-medium text-lg">Time-Based Merge</h3>
-                                <p className="mb-4 text-muted-foreground text-sm">
-                                    <strong>Best for:</strong> Chronological track merging.
-                                    <br />
-                                    <strong>How it works:</strong> Merges all points from all files based on their
-                                    timestamps. Only works with GPX files that contain time data. Points will be
-                                    ordered by time regardless of which file they came from.
-                                </p>
-                                <div className="space-y-4">
-                                    <div className="flex items-center space-x-2">
-                                        <Switch
-                                            id="skipDuplicatePoints"
-                                            checked={ mergeOptions.skipDuplicatePoints }
-                                            onCheckedChange={ (checked) =>
-                                                handleMergeOptionChange("skipDuplicatePoints", checked)
-                                            }
-                                        />
-                                        <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
-                                        <p className="ml-2 text-muted-foreground text-xs">
-                                            (Recommended) Removes points that are at the exact same location
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="simplified">
-                            <div className="mt-4 rounded-md border p-4">
-                                <h3 className="mb-2 font-medium text-lg">Simplified Merge</h3>
-                                <p className="mb-4 text-muted-foreground text-sm">
-                                    <strong>Best for:</strong> Reducing file size while preserving track shape.
-                                    <br />
-                                    <strong>How it works:</strong> First merges files (by time if elevation data is
-                                    included, sequentially otherwise), then reduces the number of points while
-                                    maintaining the track's shape. Higher tolerance means fewer points but less
-                                    precision.
-                                </p>
-
-                                <div className="space-y-4">
-                                    <div className="flex items-center space-x-2">
-                                        <Switch
-                                            id="skipDuplicatePoints"
-                                            checked={ mergeOptions.skipDuplicatePoints }
-                                            onCheckedChange={ (checked) =>
-                                                handleMergeOptionChange("skipDuplicatePoints", checked)
-                                            }
-                                        />
-                                        <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
-                                        <p className="ml-2 text-muted-foreground text-xs">
-                                            (Recommended) Removes points that are at the exact same location
-                                        </p>
-                                    </div>
-
-                                    <div className="flex flex-col space-y-2">
-                                        <Label htmlFor="simplificationTolerance">Simplification Level</Label>
-                                        <div className="flex items-center space-x-4">
-                                            <Slider
-                                                id="simplificationTolerance"
-                                                min={ 0 }
-                                                max={ 50 }
-                                                step={ 1 }
-                                                value={ [mergeOptions.simplificationTolerance] }
-                                                onValueChange={ ([value]) =>
-                                                    handleMergeOptionChange("simplificationTolerance", value)
-                                                }
-                                                className="flex-grow"
-                                            />
-                                            <span className="w-12 text-right">
-                                                { mergeOptions.simplificationTolerance }m
-                                            </span>
-                                        </div>
-                                        <p className="text-muted-foreground text-xs">
-                                            Higher values = smaller file size but less precision. Recommended: 10-20m for
-                                            most tracks
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-center space-x-2">
-                                        <Switch
-                                            id="includeElevation"
-                                            checked={ mergeOptions.includeElevation }
-                                            onCheckedChange={ (checked) =>
-                                                handleMergeOptionChange("includeElevation", checked)
-                                            }
-                                        />
-                                        <Label htmlFor="includeElevation">Preserve elevation data</Label>
-                                        <p className="ml-2 text-muted-foreground text-xs">
-                                            Keep elevation data when available (uses time-based merge as base)
-                                        </p>
-                                    </div>
-                                </div>
-
-                                { selectedPoints.length > 0 && (
-                                    <div className="mt-4 rounded bg-muted p-2">
-                                        <p className="font-medium text-sm">
-                                            Track simplified to { selectedPoints.length } points
-                                            { previewStats.totalPointsOriginal > 0 && (
-                                                <span className="ml-1 text-muted-foreground">
-                                                    (
-                                                    { Math.round(
-                                                        (selectedPoints.length / previewStats.totalPointsOriginal) * 100,
-                                                    ) }
-                                                    % of original)
-                                                </span>
-                                            ) }
-                                        </p>
-                                    </div>
-                                ) }
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="interpolated">
-                            <div className="mt-4 rounded-md border p-4">
-                                <h3 className="mb-2 font-medium text-lg">Interpolated Merge</h3>
-                                <p className="mb-4 text-muted-foreground text-sm">
-                                    <strong>Best for:</strong> Creating smooth transitions between tracks.
-                                    <br />
-                                    <strong>How it works:</strong> Similar to time-based merge, but adds extra points
-                                    to create smooth transitions between track segments. Best used when you have gaps
-                                    between recordings that you want to fill.
-                                </p>
-                                <div className="space-y-4">
-                                    <div className="flex items-center space-x-2">
-                                        <Switch
-                                            id="skipDuplicatePoints"
-                                            checked={ mergeOptions.skipDuplicatePoints }
-                                            onCheckedChange={ (checked) =>
-                                                handleMergeOptionChange("skipDuplicatePoints", checked)
-                                            }
-                                        />
-                                        <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
-                                        <p className="ml-2 text-muted-foreground text-xs">
-                                            (Recommended) Removes points that are at the exact same location
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="manual" className="hidden">
-                            {/* This tab is now hidden/removed */ }
-                        </TabsContent>
-                    </Tabs>
-
-                    {/* Advanced Options */ }
-                    <AdvancedOptions
-                        showOptions={ showAdvancedOptions }
-                        toggleOptions={ () => setShowAdvancedOptions(!showAdvancedOptions) }
-                        options={ mergeOptions }
-                        onOptionChange={ handleMergeOptionChange }
-                    />
-
-                    {/* Merge Preview */ }
-                    <MergePreview
-                        stats={ previewStats }
-                        filteredFiles={ filteredFiles }
-                        selectedPoints={ selectedPoints }
-                    />
-                </div>
-            </CardContent>
-
-            <CardFooter className="flex justify-between border-t pt-6">
-                <Button variant="outline" onClick={ () => router.push("/") }>
-                    <ChevronLeft className="mr-2 h-4 w-4" />
-                    Back to Files
-                </Button>
-
-                <div className="flex space-x-2">
-                    <Button variant="outline" onClick={ resetOptions }>
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        Reset Options
+            {/* Top Action Bar */ }
+            <div className="flex items-center justify-between border-y bg-muted/50 px-6 py-3">
+                <div className="flex items-center space-x-2">
+                    <Button variant="outline" onClick={ () => router.push("/") }>
+                        <ChevronLeft className="mr-2 h-4 w-4" />
+                        Back to Files
                     </Button>
+                </div>
+                <div className="flex space-x-2">
                     <Button
                         variant="outline"
                         onClick={ handleDownload }
@@ -617,6 +389,307 @@ export function GpxMerger() {
                         <Download className="mr-2 h-4 w-4" />
                         Download GPX
                     </Button>
+                    <Button
+                        onClick={ handleMerge }
+                        disabled={ selectedPoints.length === 0 || filteredFiles.length < 2 }
+                    >
+                        <Save className="mr-2 h-4 w-4" />
+                        Merge Files
+                    </Button>
+                </div>
+            </div>
+
+            <CardContent className="pt-6">
+                <div className="space-y-6">
+                    {/* Merge Overview/Preview */ }
+                    <MergePreview
+                        stats={ previewStats }
+                        filteredFiles={ filteredFiles }
+                        selectedPoints={ selectedPoints }
+                    />
+
+                    {/* Merge Method Selection */ }
+                    <div className="rounded-md border">
+                        <div className="border-b bg-background px-4 py-3">
+                            <h3 className="font-medium text-lg">Merge Method</h3>
+                            <p className="text-muted-foreground text-sm">
+                                Select how you want to combine your GPX data
+                            </p>
+                        </div>
+
+                        <div className="p-4">
+                            <Tabs
+                                defaultValue="sequential"
+                                value={ mergeMethod }
+                                onValueChange={ handleMergeMethodChange }
+                            >
+                                <TabsList className="grid w-full grid-cols-4">
+                                    <TabsTrigger value="sequential">Sequential</TabsTrigger>
+                                    <TabsTrigger value="byTime">By Time</TabsTrigger>
+                                    <TabsTrigger value="simplified">Simplified</TabsTrigger>
+                                    <TabsTrigger value="interpolated">Interpolated</TabsTrigger>
+                                </TabsList>
+
+                                <TabsContent value="sequential">
+                                    <div className="mt-4 rounded-md border p-4">
+                                        <h3 className="mb-2 font-medium text-lg">Sequential Merge</h3>
+                                        <p className="mb-4 text-muted-foreground text-sm">
+                                            <strong>Best for:</strong> Combining tracks in a specific order.
+                                            <br />
+                                            <strong>How it works:</strong> Files are merged in the order shown above - all
+                                            points from the first file, followed by all points from the second, and so on.
+                                            Use this when you want complete control over the track order.
+                                        </p>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center space-x-2">
+                                                <Switch
+                                                    id="skipDuplicatePoints"
+                                                    checked={ mergeOptions.skipDuplicatePoints }
+                                                    onCheckedChange={ (checked) =>
+                                                        handleMergeOptionChange("skipDuplicatePoints", checked)
+                                                    }
+                                                />
+                                                <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
+                                                <p className="ml-2 text-muted-foreground text-xs">
+                                                    (Recommended) Removes points that are at the exact same location
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="byTime">
+                                    <div className="mt-4 rounded-md border p-4">
+                                        <h3 className="mb-2 font-medium text-lg">Time-Based Merge</h3>
+                                        <p className="mb-4 text-muted-foreground text-sm">
+                                            <strong>Best for:</strong> Chronological track merging.
+                                            <br />
+                                            <strong>How it works:</strong> Merges all points from all files based on their
+                                            timestamps. Only works with GPX files that contain time data. Points will be
+                                            ordered by time regardless of which file they came from.
+                                        </p>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center space-x-2">
+                                                <Switch
+                                                    id="skipDuplicatePoints"
+                                                    checked={ mergeOptions.skipDuplicatePoints }
+                                                    onCheckedChange={ (checked) =>
+                                                        handleMergeOptionChange("skipDuplicatePoints", checked)
+                                                    }
+                                                />
+                                                <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
+                                                <p className="ml-2 text-muted-foreground text-xs">
+                                                    (Recommended) Removes points that are at the exact same location
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="simplified">
+                                    <div className="mt-4 rounded-md border p-4">
+                                        <h3 className="mb-2 font-medium text-lg">Simplified Merge</h3>
+                                        <p className="mb-4 text-muted-foreground text-sm">
+                                            <strong>Best for:</strong> Reducing file size while preserving track shape.
+                                            <br />
+                                            <strong>How it works:</strong> First merges files (by time if elevation data
+                                            is included, sequentially otherwise), then reduces the number of points while
+                                            maintaining the track's shape. Higher tolerance means fewer points but less
+                                            precision.
+                                        </p>
+
+                                        <div className="space-y-4">
+                                            <div className="flex items-center space-x-2">
+                                                <Switch
+                                                    id="skipDuplicatePoints"
+                                                    checked={ mergeOptions.skipDuplicatePoints }
+                                                    onCheckedChange={ (checked) =>
+                                                        handleMergeOptionChange("skipDuplicatePoints", checked)
+                                                    }
+                                                />
+                                                <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
+                                                <p className="ml-2 text-muted-foreground text-xs">
+                                                    (Recommended) Removes points that are at the exact same location
+                                                </p>
+                                            </div>
+
+                                            <div className="flex flex-col space-y-2">
+                                                <Label htmlFor="simplificationTolerance">Simplification Level</Label>
+                                                <div className="flex items-center space-x-4">
+                                                    <Slider
+                                                        id="simplificationTolerance"
+                                                        min={ 0 }
+                                                        max={ 50 }
+                                                        step={ 1 }
+                                                        value={ [mergeOptions.simplificationTolerance] }
+                                                        onValueChange={ ([value]) =>
+                                                            handleMergeOptionChange("simplificationTolerance", value)
+                                                        }
+                                                        className="flex-grow"
+                                                    />
+                                                    <span className="w-12 text-right">
+                                                        { mergeOptions.simplificationTolerance }m
+                                                    </span>
+                                                </div>
+                                                <p className="text-muted-foreground text-xs">
+                                                    Higher values = smaller file size but less precision. Recommended: 10-20m
+                                                    for most tracks
+                                                </p>
+                                            </div>
+
+                                            <div className="flex items-center space-x-2">
+                                                <Switch
+                                                    id="includeElevation"
+                                                    checked={ mergeOptions.includeElevation }
+                                                    onCheckedChange={ (checked) =>
+                                                        handleMergeOptionChange("includeElevation", checked)
+                                                    }
+                                                />
+                                                <Label htmlFor="includeElevation">Preserve elevation data</Label>
+                                                <p className="ml-2 text-muted-foreground text-xs">
+                                                    Keep elevation data when available (uses time-based merge as base)
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        { selectedPoints.length > 0 && (
+                                            <div className="mt-4 rounded bg-muted p-2">
+                                                <p className="font-medium text-sm">
+                                                    Track simplified to { selectedPoints.length } points
+                                                    { previewStats.totalPointsOriginal > 0 && (
+                                                        <span className="ml-1 text-muted-foreground">
+                                                            (
+                                                            { Math.round(
+                                                                (selectedPoints.length / previewStats.totalPointsOriginal) * 100,
+                                                            ) }
+                                                            % of original)
+                                                        </span>
+                                                    ) }
+                                                </p>
+                                            </div>
+                                        ) }
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="interpolated">
+                                    <div className="mt-4 rounded-md border p-4">
+                                        <h3 className="mb-2 font-medium text-lg">Interpolated Merge</h3>
+                                        <p className="mb-4 text-muted-foreground text-sm">
+                                            <strong>Best for:</strong> Creating smooth transitions between tracks.
+                                            <br />
+                                            <strong>How it works:</strong> Similar to time-based merge, but adds extra
+                                            points to create smooth transitions between track segments. Best used when you
+                                            have gaps between recordings that you want to fill.
+                                        </p>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center space-x-2">
+                                                <Switch
+                                                    id="skipDuplicatePoints"
+                                                    checked={ mergeOptions.skipDuplicatePoints }
+                                                    onCheckedChange={ (checked) =>
+                                                        handleMergeOptionChange("skipDuplicatePoints", checked)
+                                                    }
+                                                />
+                                                <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
+                                                <p className="ml-2 text-muted-foreground text-xs">
+                                                    (Recommended) Removes points that are at the exact same location
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
+
+                            {/* Advanced Options toggler */ }
+                            <div className="mt-4 flex items-center justify-between">
+                                <Button
+                                    variant="ghost"
+                                    onClick={ () => setShowAdvancedOptions(!showAdvancedOptions) }
+                                    className="text-sm"
+                                >
+                                    { showAdvancedOptions ? "Hide" : "Show" } Advanced Options
+                                </Button>
+                                <Button variant="outline" onClick={ resetOptions } size="sm">
+                                    <RotateCcw className="mr-2 h-4 w-4" />
+                                    Reset Options
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Advanced Options */ }
+                    { showAdvancedOptions && (
+                        <AdvancedOptions
+                            showOptions={ true }
+                            toggleOptions={ () => setShowAdvancedOptions(!showAdvancedOptions) }
+                            options={ mergeOptions }
+                            onOptionChange={ handleMergeOptionChange }
+                        />
+                    ) }
+
+                    {/* File Selection */ }
+                    <div className="rounded-md border">
+                        <div className="border-b bg-background px-4 py-3">
+                            <h3 className="font-medium text-lg">File Selection</h3>
+                            <p className="text-muted-foreground text-sm">
+                                Select the files to include in the merge.
+                            </p>
+                        </div>
+
+                        <div className="p-3">
+                            { selectionError && (
+                                <Alert className="mb-3 border-amber-100 bg-amber-50">
+                                    <div className="flex items-center">
+                                        <AlertTriangle className="mr-2 h-4 w-4 text-amber-500" />
+                                        <AlertDescription className="text-amber-700">{ selectionError }</AlertDescription>
+                                    </div>
+                                </Alert>
+                            ) }
+
+                            <ScrollArea className="h-[150px] rounded-md border">
+                                <div className="space-y-1 p-1">
+                                    { files.map(
+                                        (file) =>
+                                            file.id && (
+                                                <FileListItem
+                                                    key={ file.id }
+                                                    file={ file }
+                                                    isSelected={ fileSelections[file.id] || false }
+                                                    onSelectionChange={ (checked) =>
+                                                        toggleFileSelection(file.id || "", checked)
+                                                    }
+                                                    onMoveUp={ moveFileUp }
+                                                    onMoveDown={ moveFileDown }
+                                                    canMoveUp={ false }
+                                                    canMoveDown={ false }
+                                                />
+                                            ),
+                                    ) }
+                                </div>
+                            </ScrollArea>
+
+                            <div className="mt-2 text-muted-foreground text-xs">
+                                { Object.values(fileSelections).filter(Boolean).length } of { files.length } files
+                                selected
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+
+            <CardFooter className="flex justify-between border-t bg-muted/50 pt-6">
+                <div className="flex items-center text-muted-foreground text-sm">
+                    { selectedPoints.length > 0 ? (
+                        <p>
+                            Ready to merge { filteredFiles.length } files with { selectedPoints.length } points (
+                            { previewStats.estimatedFileSize })
+                        </p>
+                    ) : (
+                        <p>Select files and a merge method to continue</p>
+                    ) }
+                </div>
+
+                <div className="flex space-x-2">
                     <Button
                         onClick={ handleMerge }
                         disabled={ selectedPoints.length === 0 || filteredFiles.length < 2 }

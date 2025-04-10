@@ -47,11 +47,11 @@ export function GpxInfo() {
     const duration = calculateDuration(track);
 
     return (
-        <Card className="overflow-hidden border-2 bg-gradient-to-r from-accent to-background shadow-sm">
-            <CardHeader className="bg-background/80 pb-2">
+        <Card className="overflow-hidden border-2 bg-card shadow-md">
+            <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-primary">
+                        <CardTitle className="text-primary text-xl">
                             { gpxData.metadata.name || "Track Details" }
                         </CardTitle>
                         { gpxData.metadata.description && (
@@ -125,7 +125,7 @@ export function GpxInfo() {
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                className="text-green-600"
+                                className="text-primary"
                             >
                                 <path d="M18 8V5c0-1-1-2-2-2H4C3 3 2 4 2 5v14c0 1 1 2 2 2h12c1 0 2-1 2-2v-3" />
                                 <path d="M10 17l5-5" />
@@ -150,7 +150,7 @@ export function GpxInfo() {
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                className="text-red-600"
+                                className="text-primary"
                             >
                                 <path d="M18 8V5c0-1-1-2-2-2H4C3 3 2 4 2 5v14c0 1 1 2 2 2h12c1 0 2-1 2-2v-3" />
                                 <path d="M10 12l5 5" />
@@ -164,7 +164,7 @@ export function GpxInfo() {
                     </div>
                 </div>
                 { track.points.length > 0 && (
-                    <div className="mt-3 text-center text-muted-foreground text-xs">
+                    <div className="mt-4 text-center text-muted-foreground text-xs">
                         Track has { track.points.length } points | Last updated:{ " " }
                         { gpxData.metadata.time ? new Date(gpxData.metadata.time).toLocaleString() : "N/A" }
                     </div>
