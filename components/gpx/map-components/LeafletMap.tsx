@@ -231,7 +231,7 @@ export default function LeafletMap({
                                     key={ `marker-${index}` }
                                     position={ coordinates[index] }
                                     index={ index }
-                                    isEditable={ index !== 0 && index !== editedPoints.length - 1 }
+                                    isEditable={ true }
                                     icon={
                                         index === 0
                                             ? L.divIcon({
@@ -337,9 +337,9 @@ export default function LeafletMap({
                         <div className="absolute top-4 left-4 z-[1000] max-w-xs rounded-md bg-white bg-opacity-90 p-2 text-xs shadow-md">
                             <p className="mb-1 font-bold">Editing instructions:</p>
                             <ul className="list-disc space-y-1 pl-4">
-                                <li>Drag intermediate points to adjust the route</li>
+                                <li>Drag start, end, or intermediate points to adjust the route</li>
                                 <li>Select a point and click on the map to add a new point after it</li>
-                                <li>Select a point and press the Delete button to remove it</li>
+                                <li>Select an intermediate point and press the Delete button to remove it</li>
                                 <li>Start and end points cannot be deleted</li>
                             </ul>
                         </div>
