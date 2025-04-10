@@ -214,3 +214,93 @@ export function calculateCenter(points: GpxPoint[]): { lat: number; lon: number 
 export function formatElevation(elevation: number): string {
     return `${elevation.toFixed(0)} m`;
 }
+
+/**
+ * Implementation of the Douglas-Peucker algorithm for simplifying a track
+ * This algorithm reduces the number of points in a track while maintaining its shape
+ *
+ * @param points Array of GpxPoints to simplify
+ * @param tolerance Tolerance in meters (higher values mean more simplification)
+ * @returns Simplified array of GpxPoints
+ */
+export function simplifyTrack(points: GpxPoint[], tolerance: number): GpxPoint[] {
+    if (points.length <= 2) {
+        return [...points]; // No simplification needed for 2 or fewer points
+    }
+
+    // Find the point with the maximum distance
+    let maxDistance = 0;
+    let index = 0;
+    const firstPoint = points[0];
+    const lastPoint = points[points.length - 1];
+
+    for (let i = 1; i < points.length - 1; i++) {
+        const distance = perpendicularDistance(points[i], firstPoint, lastPoint);
+        if (distance > maxDistance) {
+            maxDistance = distance;
+            index = i;
+        }
+    }
+
+    // If max distance is greater than tolerance, recursively simplify
+    if (maxDistance > tolerance) {
+        // Recursive call
+        const firstSegment = simplifyTrack(points.slice(0, index + 1), tolerance);
+        const secondSegment = simplifyTrack(points.slice(index), tolerance);
+
+        // Concatenate the two simplified segments
+        return [...firstSegment.slice(0, -1), ...secondSegment];
+    }
+
+    // All points in this segment are close to a straight line, so we can remove all intermediate points
+    return [firstPoint, lastPoint];
+}
+
+/**
+ * Calculate perpendicular distance from a point to a line segment
+ *
+ * @param point The point to calculate distance from
+ * @param lineStart Start point of the line segment
+ * @param lineEnd End point of the line segment
+ * @returns Distance in meters
+ */
+function perpendicularDistance(point: GpxPoint, lineStart: GpxPoint, lineEnd: GpxPoint): number {
+    // Convert to cartesian coordinates for simplicity
+    // This is an approximation that works well for short distances
+    const earthRadius = 6371000; // Earth radius in meters
+
+    const x1 = lineStart.lon * Math.cos(lineStart.lat * Math.PI / 180) * earthRadius * Math.PI / 180;
+    const y1 = lineStart.lat * earthRadius * Math.PI / 180;
+
+    const x2 = lineEnd.lon * Math.cos(lineEnd.lat * Math.PI / 180) * earthRadius * Math.PI / 180;
+    const y2 = lineEnd.lat * earthRadius * Math.PI / 180;
+
+    const x = point.lon * Math.cos(point.lat * Math.PI / 180) * earthRadius * Math.PI / 180;
+    const y = point.lat * earthRadius * Math.PI / 180;
+
+    // Line length
+    const lineLength = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+
+    if (lineLength === 0) {
+        // The line is actually a point
+        return Math.sqrt((x - x1) ** 2 + (y - y1) ** 2);
+    }
+
+    // Calculate perpendicular distance
+    const t = ((x - x1) * (x2 - x1) + (y - y1) * (y2 - y1)) / (lineLength * lineLength);
+
+    if (t < 0) {
+        // Beyond the lineStart end of the segment
+        return Math.sqrt((x - x1) ** 2 + (y - y1) ** 2);
+    }
+    if (t > 1) {
+        // Beyond the lineEnd end of the segment
+        return Math.sqrt((x - x2) ** 2 + (y - y2) ** 2);
+    }
+
+    // Projection falls on the segment
+    const projX = x1 + t * (x2 - x1);
+    const projY = y1 + t * (y2 - y1);
+
+    return Math.sqrt((x - projX) ** 2 + (y - projY) ** 2);
+}
