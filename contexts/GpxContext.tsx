@@ -50,6 +50,7 @@ type GpxContextType = {
     loadGpxFilesToStore: (contents: { content: string; fileName: string }[]) => Promise<void>;
     updateMetadata: (metadata: Partial<GpxMetadata>) => void;
     deleteTrackPoints: (trackIndex: number, pointIndices: number[]) => void;
+    updateTrackPoints: (trackIndex: number, newPoints: GpxPoint[]) => void;
     clearGpxData: () => void;
     removeStoredFile: (fileId: string) => void;
     setActiveFile: (fileId: string) => void;
@@ -327,6 +328,51 @@ export function GpxProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    // Update track points completely (for interactive editing)
+    const updateTrackPoints = (trackIndex: number, newPoints: GpxPoint[]) => {
+        if (!gpxData || !gpxData.tracks[trackIndex]) return;
+
+        setGpxData((prev) => {
+            if (!prev) return prev;
+
+            const updatedTracks = [...prev.tracks];
+            const track = { ...updatedTracks[trackIndex] };
+
+            // Replace all points with the new ones
+            track.points = [...newPoints];
+            updatedTracks[trackIndex] = track;
+
+            return {
+                ...prev,
+                tracks: updatedTracks,
+                // When we modify the track, the raw XML is no longer valid
+                rawXml: undefined,
+            };
+        });
+
+        // Also update in stored files
+        if (gpxData.id) {
+            setStoredFiles(prev =>
+                prev.map(file => {
+                    if (file.id !== gpxData?.id) return file;
+
+                    const updatedTracks = [...file.tracks];
+                    if (!updatedTracks[trackIndex]) return file;
+
+                    const track = { ...updatedTracks[trackIndex] };
+                    track.points = [...newPoints];
+                    updatedTracks[trackIndex] = track;
+
+                    return {
+                        ...file,
+                        tracks: updatedTracks,
+                        rawXml: undefined
+                    };
+                })
+            );
+        }
+    };
+
     // Clear active GPX data
     const clearGpxData = () => {
         setGpxData(null);
@@ -412,6 +458,7 @@ export function GpxProvider({ children }: { children: ReactNode }) {
                 loadGpxFilesToStore,
                 updateMetadata,
                 deleteTrackPoints,
+                updateTrackPoints,
                 clearGpxData,
                 removeStoredFile,
                 setActiveFile,

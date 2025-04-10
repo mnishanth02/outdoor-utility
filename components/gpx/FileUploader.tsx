@@ -7,52 +7,13 @@ import { uploadGpxFile, uploadMultipleGpxFiles } from "@/app/actions/gpx";
 import type { UploadResult } from "@/app/actions/gpx";
 import { toast } from "sonner";
 import { useGpx } from "@/contexts/GpxContext";
+import { Upload } from "lucide-react";
 
 export function GpxFileUploader() {
     const [isUploading, setIsUploading] = useState(false);
     const { loadGpxFromFile, loadGpxFilesToStore } = useGpx();
 
     const handleFileUpload = async (formData: FormData) => {
-        try {
-            setIsUploading(true);
-            const file = formData.get("gpxFile") as File;
-
-            // Basic client-side validation
-            if (!file) {
-                toast.error("Please select a file to upload");
-                return;
-            }
-
-            if (!file.name.toLowerCase().endsWith(".gpx")) {
-                toast.error("Only GPX files are allowed");
-                return;
-            }
-
-            const maxSize = 10 * 1024 * 1024; // 10MB
-            if (file.size > maxSize) {
-                toast.error("File size exceeds maximum limit of 10MB");
-                return;
-            }
-
-            // Upload the file using the server action
-            const result = await uploadGpxFile(formData);
-
-            if (result.success && result.fileContent) {
-                // Load the GPX data into our context
-                await loadGpxFromFile(result.fileContent, result.fileName || file.name);
-                toast.success("GPX file uploaded successfully");
-            } else {
-                toast.error(result.error || "Failed to upload GPX file");
-            }
-        } catch (error) {
-            console.error("Error uploading GPX file:", error);
-            toast.error("An error occurred while uploading the file");
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    const handleMultipleFileUpload = async (formData: FormData) => {
         try {
             setIsUploading(true);
             const files = formData.getAll("gpxFiles") as File[];
@@ -86,20 +47,35 @@ export function GpxFileUploader() {
                 return;
             }
 
-            // Upload files using the server action
-            const results = await uploadMultipleGpxFiles(formData);
+            // Handle single file upload differently for better user experience
+            if (validFiles.length === 1) {
+                const file = validFiles[0];
+                const singleFormData = new FormData();
+                singleFormData.append("gpxFile", file);
 
-            if (results.success && results.files && results.files.length > 0) {
-                // Load the GPX data into our context
-                await loadGpxFilesToStore(
-                    results.files.map((result: UploadResult) => ({
-                        content: result.fileContent ?? "",
-                        fileName: result.fileName ?? `file_${Date.now()}.gpx`
-                    }))
-                );
-                toast.success(`${results.files.length} GPX file(s) uploaded successfully`);
+                const result = await uploadGpxFile(singleFormData);
+
+                if (result.success && result.fileContent) {
+                    await loadGpxFromFile(result.fileContent, result.fileName || file.name);
+                    toast.success("GPX file uploaded successfully");
+                } else {
+                    toast.error(result.error || "Failed to upload GPX file");
+                }
             } else {
-                toast.error(results.error || "Failed to upload GPX files");
+                // Upload multiple files
+                const results = await uploadMultipleGpxFiles(formData);
+
+                if (results.success && results.files && results.files.length > 0) {
+                    await loadGpxFilesToStore(
+                        results.files.map((result: UploadResult) => ({
+                            content: result.fileContent ?? "",
+                            fileName: result.fileName ?? `file_${Date.now()}.gpx`,
+                        })),
+                    );
+                    toast.success(`${results.files.length} GPX file(s) uploaded successfully`);
+                } else {
+                    toast.error(results.error || "Failed to upload GPX files");
+                }
             }
         } catch (error) {
             console.error("Error uploading GPX files:", error);
@@ -110,7 +86,7 @@ export function GpxFileUploader() {
     };
 
     return (
-        <Card className="mx-auto w-full max-w-md">
+        <Card>
             <CardHeader>
                 <CardTitle>Upload GPX File(s)</CardTitle>
                 <CardDescription>
@@ -118,50 +94,28 @@ export function GpxFileUploader() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="mb-2 font-medium text-sm">Upload Single File</h3>
-                        <form action={ handleFileUpload }>
-                            <div className="grid w-full items-center gap-4">
-                                <Input
-                                    id="gpxFile"
-                                    name="gpxFile"
-                                    type="file"
-                                    accept=".gpx"
-                                    disabled={ isUploading }
-                                    required
-                                />
-                            </div>
-                            <div className="mt-4 flex justify-end">
-                                <Button type="submit" disabled={ isUploading }>
-                                    { isUploading ? "Uploading..." : "Upload GPX File" }
-                                </Button>
-                            </div>
-                        </form>
-                    </div>
+                <form action={ handleFileUpload }>
+                    <div className="flex flex-col items-center rounded-lg border-2 border-dashed bg-gray-50 p-6 transition-colors hover:bg-gray-100">
+                        <Upload className="mb-2 h-10 w-10 text-gray-400" />
+                        <p className="mb-1 font-medium text-sm">Drag and drop your GPX files here</p>
+                        <p className="mb-4 text-gray-500 text-xs">or click to browse files</p>
 
-                    <div className="border-t pt-4">
-                        <h3 className="mb-2 font-medium text-sm">Upload Multiple Files</h3>
-                        <form action={ handleMultipleFileUpload }>
-                            <div className="grid w-full items-center gap-4">
-                                <Input
-                                    id="gpxFiles"
-                                    name="gpxFiles"
-                                    type="file"
-                                    accept=".gpx"
-                                    multiple
-                                    disabled={ isUploading }
-                                    required
-                                />
-                            </div>
-                            <div className="mt-4 flex justify-end">
-                                <Button type="submit" disabled={ isUploading }>
-                                    { isUploading ? "Uploading..." : "Upload Multiple Files" }
-                                </Button>
-                            </div>
-                        </form>
+                        <Input
+                            id="gpxFiles"
+                            name="gpxFiles"
+                            type="file"
+                            accept=".gpx"
+                            multiple
+                            disabled={ isUploading }
+                            required
+                            className="max-w-xs"
+                        />
+
+                        <Button type="submit" disabled={ isUploading } className="mt-4">
+                            { isUploading ? "Uploading..." : "Upload GPX Files" }
+                        </Button>
                     </div>
-                </div>
+                </form>
             </CardContent>
         </Card>
     );

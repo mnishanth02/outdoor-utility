@@ -8,25 +8,55 @@ import { GpxFilesManager } from "@/components/gpx/GpxFilesManager";
 
 export default function Home() {
   return (
-    <div className="grid min-h-screen grid-rows-[auto_1fr_auto] items-start gap-8 p-8 pb-20 font-[family-name:var(--font-geist-sans)] sm:p-20">
-      <h1 className="text-center font-bold text-3xl">Outdoor Connect</h1>
+    <div className="grid min-h-screen grid-rows-[auto_1fr_auto] items-start gap-6 p-4 pb-12 font-[family-name:var(--font-geist-sans)] sm:p-6 md:gap-8">
+      <header className="container px-4">
+        <h1 className="mb-2 text-center font-bold text-3xl">Outdoor Connect</h1>
+        <p className="mb-6 text-center text-gray-500 text-sm">
+          Upload, view, edit, and analyze GPX tracks
+        </p>
+      </header>
 
-      <div className="mx-auto w-full max-w-4xl space-y-8">
-        <GpxFileUploader />
-        <GpxFilesManager />
-        <GpxInfo />
-        <GpxMap />
+      <main className="container px-4">
+        <div className="space-y-6">
+          {/* Upload section */ }
+          <section>
+            <GpxFileUploader />
+          </section>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <GpxMetadataEditor />
-          <div className="space-y-6">
-            <GpxPointEditor />
-            <GpxExporter />
-          </div>
+          {/* Files manager */ }
+          <section>
+            <GpxFilesManager />
+          </section>
+
+          {/* Main GPX viewer section */ }
+          <section className="space-y-6">
+            {/* Primary map view */ }
+            <div>
+              <GpxMap />
+            </div>
+
+            {/* GPX info and editors */ }
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="md:col-span-1">
+                <GpxInfo />
+              </div>
+              <div className="space-y-6 md:col-span-2">
+                <GpxMetadataEditor />
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <GpxPointEditor />
+                  <GpxExporter />
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
+      </main>
 
-      <footer className="text-center text-gray-500 text-sm">GPX Viewer & Editor</footer>
+      <footer className="container px-4 py-4">
+        <div className="text-center text-gray-500 text-sm">
+          <p>Outdoor Connect - GPX Viewer & Editor</p>
+        </div>
+      </footer>
     </div>
   );
 }
