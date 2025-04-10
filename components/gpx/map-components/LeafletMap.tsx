@@ -127,6 +127,11 @@ export default function LeafletMap({
     const [editedPoints, setEditedPoints] = useState<GpxPoint[]>(points);
     const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
 
+    // Update internal editMode when the isEditing prop changes
+    useEffect(() => {
+        setEditMode(isEditing);
+    }, [isEditing]);
+
     // Transform points for Leaflet - [lat, lon] format
     const coordinates: Array<[number, number]> = useMemo(
         () => editedPoints.map((point) => [point.lat, point.lon]),
