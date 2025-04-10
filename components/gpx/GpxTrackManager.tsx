@@ -549,7 +549,7 @@ export function GpxTrackManager() {
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button variant="ghost" size="icon" asChild aria-label="Edit track">
-                                                                    <Link href={ `/edit?id=${track.id}` }>
+                                                                    <Link href={ `/edit/${track.id}` }>
                                                                         <Edit className="h-4 w-4" />
                                                                     </Link>
                                                                 </Button>
