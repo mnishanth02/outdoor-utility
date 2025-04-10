@@ -120,8 +120,7 @@ export function CollapsibleFileUploader() {
                         <form action={ handleFileUpload }>
                             <div className="flex flex-col items-center rounded-lg border-2 border-dashed bg-muted/30 p-6 transition-colors hover:bg-muted/50">
                                 <Upload className="mb-2 h-10 w-10 text-muted-foreground" />
-                                <p className="mb-1 font-medium text-sm">Drag and drop your GPX files here</p>
-                                <p className="mb-4 text-muted-foreground text-xs">or click to browse files</p>
+                                <p className="mb-4 "> Click to browse files</p>
 
                                 <Input
                                     id="gpxFiles"
