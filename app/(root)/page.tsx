@@ -375,6 +375,7 @@ function HomeClientComponent() {
       >
         <div className="text-center text-muted-foreground text-sm">
           <p>Outdoor Connect - GPX Viewer & Editor</p>
+          <p>Made with ❤️ by <Link href="https://outdoor.zealer.in" className="underline">Nishanth Murugan</Link></p>
         </div>
       </motion.footer>
     </div>

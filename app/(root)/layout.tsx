@@ -17,6 +17,36 @@ export const metadata: Metadata = {
     name: "Nishanth Murugan",
     url: "https://outdoor.zealer.in",
   },
+  icons: {
+    icon: "/favicon.ico",
+  },
+  openGraph: {
+    title: "Outdoor Connect - GPX Viewer & Editor",
+    description: "Upload, visualize, edit, and merge GPX tracks for outdoor activities",
+    url: "https://outdoor.zealer.in",
+    siteName: "Outdoor Connect",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Outdoor Connect - GPX Viewer & Editor",
+    description: "Upload, visualize, edit, and merge GPX tracks for outdoor activities",
+    creator: "@mnishanth02",
+  },
+  metadataBase: new URL("https://outdoor.zealer.in"),
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+  alternates: {
+    canonical: "https://outdoor.zealer.in",
+  },
+  category: "technology",
+
 };
 
 export default function RootLayout({

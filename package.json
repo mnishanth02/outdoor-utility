@@ -2,6 +2,16 @@
   "name": "outdoor-connect",
   "version": "0.1.0",
   "private": true,
+  "author": "Nishanth Murugan",
+  "license": "MIT",
+  "homepage": "https://outdoor.zealer.in",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nishanthmurugan/outdoor-connect"
+  },
+  "keywords": ["outdoor", "connect", "gpx", "map", "editor"],
+  "description": "Outdoor Connect - GPX Viewer & Editor",
+
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
