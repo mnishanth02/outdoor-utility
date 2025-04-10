@@ -3,8 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RefreshCcw } from "lucide-react";
 import { EditPageClient } from "@/components/edit/EditPageClient";
 
-export default async function EditPage({ params }: { params: { id: string } }) {
-    const { id } = params;
+export default async function EditPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
 
     return (
         <div className="container mx-auto py-8">

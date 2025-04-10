@@ -57,7 +57,6 @@ function HomeClientComponent() {
   const { gpxData, storedFiles, selectedFileIds } = useGpx();
   const hasFiles = storedFiles.length > 0;
   const hasActiveFile = gpxData !== null;
-  const hasMultipleFiles = storedFiles.length >= 2;
   const hasEnoughSelectedFiles = selectedFileIds.length >= 2;
 
   // Animation refs for scroll animations
@@ -65,7 +64,6 @@ function HomeClientComponent() {
   const isHeaderInView = useInView(headerRef, { once: true });
 
   const mergeRef = useRef(null);
-  const isMergeInView = useInView(mergeRef, { once: true, margin: "-100px 0px" });
 
   const emptyStateRef = useRef(null);
   const isEmptyStateInView = useInView(emptyStateRef, { once: true });
@@ -114,16 +112,13 @@ function HomeClientComponent() {
             <GpxTrackManager />
           </motion.section>
 
-          {/* Merge Highlight Section - show when multiple files are available */ }
+          {/* Merge Highlight Section - show only when multiple files are selected */ }
           <AnimatePresence>
-            { hasMultipleFiles && (
+            { hasEnoughSelectedFiles && (
               <motion.section
                 ref={ mergeRef }
                 initial={ { opacity: 0, y: 40 } }
-                animate={ {
-                  opacity: isMergeInView ? 1 : 0,
-                  y: isMergeInView ? 0 : 40,
-                } }
+                animate={ { opacity: 1, y: 0 } }
                 exit={ { opacity: 0, y: -20 } }
                 transition={ { type: "spring", stiffness: 300, damping: 25 } }
                 className="mt-8 mb-8"
