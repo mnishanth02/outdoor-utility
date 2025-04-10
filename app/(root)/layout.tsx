@@ -13,6 +13,10 @@ const fontSans = FontSans({
 export const metadata: Metadata = {
   title: "Outdoor Connect - GPX Viewer & Editor",
   description: "Upload, visualize, edit, and merge GPX tracks for outdoor activities",
+  authors: {
+    name: "Nishanth Murugan",
+    url: "https://outdoor.zealer.in",
+  },
 };
 
 export default function RootLayout({
