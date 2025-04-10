@@ -30,6 +30,7 @@ import {
     Clock,
     Ruler,
     Award,
+    Merge,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -43,6 +44,7 @@ import {
     formatDistance,
 } from "@/lib/gpx-utils";
 import { useRouter } from "next/navigation";
+import { GlowEffect } from "@/components/ui/glow-effect";
 
 export function GpxTrackManager() {
     const router = useRouter();
@@ -314,35 +316,28 @@ export function GpxTrackManager() {
                             { selectedFileIds.length === storedFiles.length ? "Deselect All" : "Select All" }
                         </Button>
 
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={ !hasEnoughFilesForMerge }
-                            onClick={ handleMergeSelected }
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="mr-2"
+                        <div className="relative z-10 overflow-visible">
+                            { hasEnoughFilesForMerge && (
+                                <GlowEffect
+                                    colors={ ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd"] }
+                                    mode="colorShift"
+                                    blur="medium"
+                                    duration={ 4 }
+                                    scale={ 1.03 }
+                                    className="z-0 opacity-50"
+                                />
+                            ) }
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={ !hasEnoughFilesForMerge }
+                                onClick={ handleMergeSelected }
+                                className="relative z-10 border border-primary/50 hover:bg-primary/5"
                             >
-                                <path d="m8 6 4-4 4 4" />
-                                <path d="M12 2v10.3" />
-                                <path d="m8 16 4 4 4-4" />
-                                <path d="M12 20v-4" />
-                                <path d="M20 10v.3c0 1.5-.5 3-1.4 4.2" />
-                                <path d="M4 10v.3c0 1.5.5 3 1.4 4.2" />
-                                <path d="M20 14v4h-4" />
-                                <path d="M4 14v4h4" />
-                            </svg>
-                            Merge ({ selectedFileIds.length })
-                        </Button>
+                                <Merge className="mr-2 h-4 w-4" />
+                                Merge ({ selectedFileIds.length })
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </CardHeader>
@@ -373,35 +368,28 @@ export function GpxTrackManager() {
                             { selectedFileIds.length === storedFiles.length ? "Deselect All" : "Select All" }
                         </Button>
 
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={ !hasEnoughFilesForMerge }
-                            onClick={ handleMergeSelected }
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="mr-2"
+                        <div className="relative z-10 overflow-visible">
+                            { hasEnoughFilesForMerge && (
+                                <GlowEffect
+                                    colors={ ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd"] }
+                                    mode="colorShift"
+                                    blur="medium"
+                                    duration={ 4 }
+                                    scale={ 1.03 }
+                                    className="z-0 opacity-50"
+                                />
+                            ) }
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={ !hasEnoughFilesForMerge }
+                                onClick={ handleMergeSelected }
+                                className="relative z-10 border border-primary/50 hover:bg-primary/5"
                             >
-                                <path d="m8 6 4-4 4 4" />
-                                <path d="M12 2v10.3" />
-                                <path d="m8 16 4 4 4-4" />
-                                <path d="M12 20v-4" />
-                                <path d="M20 10v.3c0 1.5-.5 3-1.4 4.2" />
-                                <path d="M4 10v.3c0 1.5.5 3 1.4 4.2" />
-                                <path d="M20 14v4h-4" />
-                                <path d="M4 14v4h4" />
-                            </svg>
-                            Merge ({ selectedFileIds.length })
-                        </Button>
+                                <Merge className="mr-2 h-4 w-4" />
+                                Merge ({ selectedFileIds.length })
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="border-t">

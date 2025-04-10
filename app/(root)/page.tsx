@@ -10,7 +10,8 @@ import { useGpx } from "@/contexts/GpxContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { MergeIcon } from "lucide-react";
+import { Merge } from "lucide-react";
+import { GlowEffect } from "@/components/ui/glow-effect";
 
 export default function Home() {
   // We need to make this component a client component to access the GpxContext
@@ -52,7 +53,7 @@ function HomeClientComponent() {
               <Card className="overflow-hidden border-2 border-primary/20 bg-primary/5 shadow-md">
                 <CardHeader className="bg-primary/10 pt-2 pb-6">
                   <CardTitle className="flex items-center gap-3 text-xl">
-                    <MergeIcon className="h-5 w-5" />
+                    <Merge className="h-5 w-5" />
                     Merge GPX Tracks
                   </CardTitle>
                   <CardDescription className="text-base">
@@ -70,38 +71,31 @@ function HomeClientComponent() {
                         Select at least two files in the track manager above to enable merging
                       </p>
                     </div>
-                    <Button
-                      size="lg"
-                      disabled={ !hasEnoughSelectedFiles }
-                      className={
-                        hasEnoughSelectedFiles ? "animate-pulse bg-primary hover:bg-primary/90" : ""
-                      }
-                      asChild
-                    >
-                      <Link href="/merge" className="flex items-center gap-2">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="20"
-                          height="20"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="m8 6 4-4 4 4" />
-                          <path d="M12 2v10.3" />
-                          <path d="m8 16 4 4 4-4" />
-                          <path d="M12 20v-4" />
-                          <path d="M20 10v.3c0 1.5-.5 3-1.4 4.2" />
-                          <path d="M4 10v.3c0 1.5.5 3 1.4 4.2" />
-                          <path d="M20 14v4h-4" />
-                          <path d="M4 14v4h4" />
-                        </svg>
-                        { hasEnoughSelectedFiles ? "Merge Selected Tracks" : "Select Files to Merge" }
-                      </Link>
-                    </Button>
+                    <div className="relative z-10 overflow-visible">
+                      { hasEnoughSelectedFiles && (
+                        <GlowEffect
+                          colors={ ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd"] }
+                          mode="colorShift"
+                          blur="medium"
+                          duration={ 4 }
+                          scale={ 1.03 }
+                          className="z-0 opacity-50"
+                        />
+                      ) }
+                      <Button
+                        size="lg"
+                        disabled={ !hasEnoughSelectedFiles }
+                        className="relative z-10 border border-primary/50 bg-card text-primary hover:bg-primary/5"
+                        asChild
+                      >
+                        <Link href="/merge" className="flex items-center gap-2">
+                          <Merge className="h-5 w-5" />
+                          { hasEnoughSelectedFiles
+                            ? "Merge Selected Tracks"
+                            : "Select Files to Merge" }
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
