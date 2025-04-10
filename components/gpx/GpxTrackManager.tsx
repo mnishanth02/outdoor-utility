@@ -37,25 +37,38 @@ import {
     formatDuration,
     formatDistance,
 } from "@/lib/gpx-utils";
+import { useRouter } from "next/navigation";
 
 export function GpxTrackManager() {
-    const { storedFiles, setActiveFile, removeStoredFile, gpxData, isLoading, error } = useGpx();
-    const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+    const router = useRouter();
+    const {
+        storedFiles,
+        setActiveFile,
+        removeStoredFile,
+        gpxData,
+        isLoading,
+        error,
+        selectedFileIds,
+        toggleFileSelection,
+        setSelectedFileIds,
+    } = useGpx();
+
     const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
     const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
     const [sortField, setSortField] = useState<string>("name");
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
+    // Check if we have enough files selected for merging
+    const hasEnoughFilesForMerge = selectedFileIds.length >= 2;
+
     const handleToggleFile = (fileId: string) => {
-        setSelectedFiles((prev) =>
-            prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId],
-        );
+        toggleFileSelection(fileId);
     };
 
     const handleSelectAll = () => {
-        if (selectedFiles.length === storedFiles.length) {
+        if (selectedFileIds.length === storedFiles.length) {
             // Deselect all
-            setSelectedFiles([]);
+            setSelectedFileIds([]);
             return;
         }
 
@@ -64,7 +77,7 @@ export function GpxTrackManager() {
             .filter((file) => typeof file.id === "string")
             .map((file) => file.id as string);
 
-        setSelectedFiles(fileIds);
+        setSelectedFileIds(fileIds);
     };
 
     const handleRemoveFile = (fileId: string) => {
@@ -76,11 +89,6 @@ export function GpxTrackManager() {
         // Show success message
         setDeleteSuccess(`"${fileName}" has been removed`);
         setTimeout(() => setDeleteSuccess(null), 3000);
-
-        // Remove from selected files if needed
-        if (selectedFiles.includes(fileId)) {
-            setSelectedFiles((prev) => prev.filter((id) => id !== fileId));
-        }
     };
 
     const handleDownloadFile = (fileId: string) => {
@@ -107,6 +115,15 @@ export function GpxTrackManager() {
         // Show success message
         setDownloadSuccess(`"${file.metadata.name}" has been downloaded`);
         setTimeout(() => setDownloadSuccess(null), 3000);
+    };
+
+    const handleMergeSelected = () => {
+        if (selectedFileIds.length < 2) {
+            return; // Button should be disabled anyway
+        }
+
+        // Navigate to merge page
+        router.push("/merge");
     };
 
     const getTrackStatistics = (file: (typeof storedFiles)[0]) => {
@@ -205,6 +222,7 @@ export function GpxTrackManager() {
     const tracksWithStats = storedFiles.map((file) => {
         const stats = getTrackStatistics(file);
         const isActive = gpxData?.id === file.id;
+        const isSelected = file.id ? selectedFileIds.includes(file.id) : false;
 
         return {
             id: file.id,
@@ -218,35 +236,28 @@ export function GpxTrackManager() {
             elevationGain: stats.elevationGain,
             elevationLoss: stats.elevationLoss,
             isActive,
+            isSelected,
         };
     });
 
     // Sort the data
     const sortedTracks = [...tracksWithStats].sort((a, b) => {
         if (sortField === "name") {
-            return sortDirection === "asc"
-                ? a.name.localeCompare(b.name)
-                : b.name.localeCompare(a.name);
+            return sortDirection === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
         }
 
         if (sortField === "distance") {
-            return sortDirection === "asc"
-                ? a.distance - b.distance
-                : b.distance - a.distance;
+            return sortDirection === "asc" ? a.distance - b.distance : b.distance - a.distance;
         }
 
         if (sortField === "duration") {
             const aDuration = a.duration || 0;
             const bDuration = b.duration || 0;
-            return sortDirection === "asc"
-                ? aDuration - bDuration
-                : bDuration - aDuration;
+            return sortDirection === "asc" ? aDuration - bDuration : bDuration - aDuration;
         }
 
         if (sortField === "points") {
-            return sortDirection === "asc"
-                ? a.points - b.points
-                : b.points - a.points;
+            return sortDirection === "asc" ? a.points - b.points : b.points - a.points;
         }
 
         if (sortField === "elevation") {
@@ -256,9 +267,7 @@ export function GpxTrackManager() {
         }
 
         // Default sort by name
-        return sortDirection === "asc"
-            ? a.name.localeCompare(b.name)
-            : b.name.localeCompare(a.name);
+        return sortDirection === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
     });
 
     const SortIcon = ({ field }: { field: string }) => {
@@ -297,11 +306,40 @@ export function GpxTrackManager() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <Button variant="outline" size="sm" onClick={ handleSelectAll }>
                             <CheckSquare className="mr-2 h-4 w-4" />
-                            { selectedFiles.length === storedFiles.length ? "Deselect All" : "Select All" }
+                            { selectedFileIds.length === storedFiles.length ? "Deselect All" : "Select All" }
                         </Button>
 
-                        <Button variant="default" size="sm" disabled={ selectedFiles.length < 2 } asChild>
-                            <Link href="/merge">Merge Selected ({ selectedFiles.length })</Link>
+                        <Button
+                            variant={ hasEnoughFilesForMerge ? "default" : "outline" }
+                            size="sm"
+                            disabled={ !hasEnoughFilesForMerge }
+                            onClick={ handleMergeSelected }
+                            className={
+                                hasEnoughFilesForMerge ? "animate-pulse bg-primary text-primary-foreground" : ""
+                            }
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="mr-2"
+                            >
+                                <path d="m8 6 4-4 4 4" />
+                                <path d="M12 2v10.3" />
+                                <path d="m8 16 4 4 4-4" />
+                                <path d="M12 20v-4" />
+                                <path d="M20 10v.3c0 1.5-.5 3-1.4 4.2" />
+                                <path d="M4 10v.3c0 1.5.5 3 1.4 4.2" />
+                                <path d="M20 14v4h-4" />
+                                <path d="M4 14v4h4" />
+                            </svg>
+                            Merge Selected ({ selectedFileIds.length })
                         </Button>
                     </div>
 
@@ -363,10 +401,16 @@ export function GpxTrackManager() {
                                     if (!track.id) return null;
 
                                     return (
-                                        <TableRow key={ track.id } className={ track.isActive ? "bg-accent/30" : "" }>
-                                            <TableCell>
+                                        <TableRow
+                                            key={ track.id }
+                                            className={ `
+                                                ${track.isActive ? "bg-accent/30" : ""}
+                                                ${track.isSelected ? "bg-primary/10" : ""}hover:bg-primary/5 cursor-pointer ` }
+                                            onClick={ () => handleToggleFile(track.id || "") }
+                                        >
+                                            <TableCell onClick={ (e) => e.stopPropagation() }>
                                                 <Checkbox
-                                                    checked={ selectedFiles.includes(track.id) }
+                                                    checked={ track.isSelected }
                                                     onCheckedChange={ () => handleToggleFile(track.id || "") }
                                                     aria-label={ `Select ${track.name}` }
                                                 />
@@ -374,11 +418,18 @@ export function GpxTrackManager() {
                                             <TableCell>
                                                 <div className="font-medium">{ track.name }</div>
                                                 <div className="text-muted-foreground text-xs">{ track.fileName }</div>
-                                                { track.isActive && (
-                                                    <Badge variant="outline" className="mt-1 w-fit bg-blue-50 text-blue-600">
-                                                        Active
-                                                    </Badge>
-                                                ) }
+                                                <div className="mt-1 flex gap-1">
+                                                    { track.isActive && (
+                                                        <Badge variant="outline" className="w-fit bg-blue-50 text-blue-600">
+                                                            Active
+                                                        </Badge>
+                                                    ) }
+                                                    { track.isSelected && (
+                                                        <Badge variant="outline" className="w-fit bg-green-50 text-green-600">
+                                                            Selected
+                                                        </Badge>
+                                                    ) }
+                                                </div>
                                             </TableCell>
                                             <TableCell>{ track.points }</TableCell>
                                             <TableCell>{ track.formattedDistance }</TableCell>
@@ -415,7 +466,7 @@ export function GpxTrackManager() {
                                                     </span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right">
+                                            <TableCell className="text-right" onClick={ (e) => e.stopPropagation() }>
                                                 <div className="flex justify-end space-x-2">
                                                     <TooltipProvider>
                                                         <Tooltip>
@@ -457,7 +508,10 @@ export function GpxTrackManager() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    onClick={ () => handleDownloadFile(track.id || "") }
+                                                                    onClick={ (e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDownloadFile(track.id || "");
+                                                                    } }
                                                                     aria-label="Download track"
                                                                 >
                                                                     <Download className="h-4 w-4" />
@@ -475,7 +529,10 @@ export function GpxTrackManager() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    onClick={ () => handleRemoveFile(track.id || "") }
+                                                                    onClick={ (e) => {
+                                                                        e.stopPropagation();
+                                                                        handleRemoveFile(track.id || "");
+                                                                    } }
                                                                     aria-label="Delete track"
                                                                 >
                                                                     <Trash2 className="h-4 w-4 text-red-500" />

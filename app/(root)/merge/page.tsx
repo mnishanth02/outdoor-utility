@@ -3,19 +3,60 @@ import { useGpx } from "@/contexts/GpxContext";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { GpxMerger } from "@/components/gpx/GpxMerger";
+import { useState, useEffect } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function MergePage() {
     return <MergePageClient />;
 }
 
 function MergePageClient() {
-    const { storedFiles } = useGpx();
+    const { storedFiles, selectedFileIds } = useGpx();
+    const [error, setError] = useState<string | null>(null);
+
+    // Check if we have enough files
     const hasEnoughFiles = storedFiles.length >= 2;
+
+    // Check if we have enough selected files
+    const hasEnoughSelectedFiles = selectedFileIds.length >= 2;
+
+    // Check for selection state when the component mounts
+    useEffect(() => {
+        // Set error if we don't have enough selected files
+        if (storedFiles.length >= 2 && selectedFileIds.length < 2) {
+            setError("Please select at least two files to merge in the GPX Track Manager");
+        } else {
+            setError(null);
+        }
+    }, [storedFiles, selectedFileIds]);
 
     return (
         <div className="container mx-auto py-8">
             { hasEnoughFiles ? (
-                <GpxMerger />
+                <>
+                    { !hasEnoughSelectedFiles ? (
+                        <div className="flex flex-col items-center justify-center rounded-lg bg-muted/30 p-8">
+                            <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-yellow-50 text-yellow-600">
+                                <AlertCircle size={ 32 } />
+                            </div>
+                            <h2 className="mb-2 font-semibold text-xl">Selection Required</h2>
+                            <Alert className="mb-6 max-w-md">
+                                <AlertDescription>
+                                    { error }
+                                </AlertDescription>
+                            </Alert>
+                            <Button variant="default" asChild>
+                                <Link href="/" className="flex items-center gap-2">
+                                    <ArrowLeft size={ 16 } />
+                                    Return to GPX Track Manager
+                                </Link>
+                            </Button>
+                        </div>
+                    ) : (
+                        <GpxMerger />
+                    ) }
+                </>
             ) : (
                 <div className="flex flex-col items-center justify-center rounded-lg bg-muted/30 p-8">
                     <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary">

@@ -46,6 +46,7 @@ type GpxContextType = {
     storedFiles: GpxData[];
     isLoading: boolean;
     error: string | null;
+    selectedFileIds: string[]; // Track selected files for merging
     loadGpxFromFile: (content: string, fileName: string) => Promise<void>;
     loadGpxFilesToStore: (contents: { content: string; fileName: string }[]) => Promise<void>;
     updateMetadata: (metadata: Partial<GpxMetadata>) => void;
@@ -56,6 +57,8 @@ type GpxContextType = {
     setActiveFile: (fileId: string) => void;
     mergeFiles: (mergeConfig: MergeConfig) => void;
     updateStoredFileMetadata: (fileId: string, metadata: Partial<GpxMetadata>) => void;
+    toggleFileSelection: (fileId: string) => void; // Toggle selection state of a file
+    setSelectedFileIds: (fileIds: string[]) => void; // Set selected file IDs directly
 };
 
 // Create context
@@ -79,6 +82,7 @@ export function GpxProvider({ children }: { children: ReactNode }) {
     const [storedFiles, setStoredFiles] = useState<GpxData[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
 
     // Parse GPX XML to structured data
     const parseGpxXml = async (xml: string, fileName?: string): Promise<GpxData> => {
@@ -447,6 +451,15 @@ export function GpxProvider({ children }: { children: ReactNode }) {
         setStoredFiles(prev => [...prev, mergedGpx]);
     };
 
+    // Toggle selection of a file for merging
+    const toggleFileSelection = (fileId: string) => {
+        setSelectedFileIds(prev =>
+            prev.includes(fileId)
+                ? prev.filter(id => id !== fileId)
+                : [...prev, fileId]
+        );
+    };
+
     return (
         <GpxContext.Provider
             value={ {
@@ -454,6 +467,7 @@ export function GpxProvider({ children }: { children: ReactNode }) {
                 storedFiles,
                 isLoading,
                 error,
+                selectedFileIds,
                 loadGpxFromFile,
                 loadGpxFilesToStore,
                 updateMetadata,
@@ -463,7 +477,9 @@ export function GpxProvider({ children }: { children: ReactNode }) {
                 removeStoredFile,
                 setActiveFile,
                 mergeFiles,
-                updateStoredFileMetadata
+                updateStoredFileMetadata,
+                toggleFileSelection,
+                setSelectedFileIds,
             } }
         >
             { children }
