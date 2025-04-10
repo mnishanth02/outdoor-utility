@@ -28,13 +28,13 @@ import { AdvancedOptions } from "./merge-components/AdvancedOptions";
 export type MergeMethod = "sequential" | "byTime" | "interpolated" | "simplified";
 
 export type MergeOptions = {
-    skipDuplicatePoints: boolean;
+    preserveOriginalFiles: boolean | undefined;
+    outputFormat: string | undefined;
     autoSmoothTransitions: boolean;
+    skipDuplicatePoints: boolean;
     simplificationTolerance: number;
     includeElevation: boolean;
     timeGapThreshold: number; // in minutes
-    preserveOriginalFiles: boolean;
-    outputFormat: "single-track";
     fileOrder: string[];
 };
 
@@ -54,13 +54,13 @@ export function GpxMerger() {
     const [filteredFiles, setFilteredFiles] = useState<GpxData[]>([]);
     const [fileSelections, setFileSelections] = useState<Record<string, boolean>>({});
     const [mergeOptions, setMergeOptions] = useState<MergeOptions>({
+        autoSmoothTransitions: true,
+        preserveOriginalFiles: false,
+        outputFormat: "single-track",
         skipDuplicatePoints: true,
-        autoSmoothTransitions: false,
         simplificationTolerance: 10, // meters
         includeElevation: true,
         timeGapThreshold: 30, // minutes
-        preserveOriginalFiles: true,
-        outputFormat: "single-track",
         fileOrder: [],
     });
     const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
@@ -219,12 +219,9 @@ export function GpxMerger() {
         setMergeOptions({
             ...mergeOptions,
             skipDuplicatePoints: true,
-            autoSmoothTransitions: false,
             simplificationTolerance: 10,
             includeElevation: true,
             timeGapThreshold: 30,
-            preserveOriginalFiles: true,
-            outputFormat: "single-track",
         });
     };
 
@@ -308,70 +305,55 @@ export function GpxMerger() {
                             <div className="mt-4 rounded-md border p-4">
                                 <h3 className="mb-2 font-medium text-lg">Sequential Merge</h3>
                                 <p className="mb-4 text-muted-foreground text-sm">
-                                    Files will be merged in the order shown above. All points from the first file,
-                                    followed by all points from the second, and so on.
+                                    <strong>Best for:</strong> Combining tracks in a specific order.
+                                    <br />
+                                    <strong>How it works:</strong> Files are merged in the order shown above - all
+                                    points from the first file, followed by all points from the second, and so on. Use
+                                    this when you want complete control over the track order.
                                 </p>
-                                <div className="flex space-x-2 overflow-x-auto rounded bg-muted p-2">
-                                    { filteredFiles.map(
-                                        (file, index) =>
-                                            file.id && (
-                                                <div key={ file.id } className="flex flex-shrink-0 items-center">
-                                                    <span className="font-medium text-sm">{ file.metadata.name }</span>
-                                                    { index < filteredFiles.length - 1 && (
-                                                        <ChevronLeft className="mx-1 h-4 w-4 rotate-180 text-muted-foreground" />
-                                                    ) }
-                                                </div>
-                                            ),
-                                    ) }
+                                <div className="space-y-4">
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="skipDuplicatePoints"
+                                            checked={ mergeOptions.skipDuplicatePoints }
+                                            onCheckedChange={ (checked) =>
+                                                handleMergeOptionChange("skipDuplicatePoints", checked)
+                                            }
+                                        />
+                                        <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
+                                        <p className="ml-2 text-muted-foreground text-xs">
+                                            (Recommended) Removes points that are at the exact same location
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </TabsContent>
 
                         <TabsContent value="byTime">
                             <div className="mt-4 rounded-md border p-4">
-                                <h3 className="mb-2 font-medium text-lg">Merge by Timestamp</h3>
+                                <h3 className="mb-2 font-medium text-lg">Time-Based Merge</h3>
                                 <p className="mb-4 text-muted-foreground text-sm">
-                                    Points from all files will be sorted based on their timestamps, resulting in a
-                                    chronologically correct sequence. Points without timestamps will be excluded.
+                                    <strong>Best for:</strong> Chronological track merging.
+                                    <br />
+                                    <strong>How it works:</strong> Merges all points from all files based on their
+                                    timestamps. Only works with GPX files that contain time data. Points will be
+                                    ordered by time regardless of which file they came from.
                                 </p>
-
                                 <div className="space-y-4">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="flex flex-grow flex-col space-y-2">
-                                            <Label htmlFor="timeGapThreshold">Time Gap Threshold (minutes)</Label>
-                                            <div className="flex items-center space-x-4">
-                                                <Slider
-                                                    id="timeGapThreshold"
-                                                    min={ 0 }
-                                                    max={ 120 }
-                                                    step={ 5 }
-                                                    value={ [mergeOptions.timeGapThreshold] }
-                                                    onValueChange={ ([value]) =>
-                                                        handleMergeOptionChange("timeGapThreshold", value)
-                                                    }
-                                                    className="flex-grow"
-                                                />
-                                                <span className="w-12 text-right">{ mergeOptions.timeGapThreshold }</span>
-                                            </div>
-                                            <p className="text-muted-foreground text-xs">
-                                                Create new track segments when time gaps exceed this threshold
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                { selectedPoints.length > 0 ? (
-                                    <div className="mt-4 rounded bg-muted p-2">
-                                        <p className="font-medium text-sm">
-                                            { selectedPoints.length } points will be merged chronologically
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="skipDuplicatePoints"
+                                            checked={ mergeOptions.skipDuplicatePoints }
+                                            onCheckedChange={ (checked) =>
+                                                handleMergeOptionChange("skipDuplicatePoints", checked)
+                                            }
+                                        />
+                                        <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
+                                        <p className="ml-2 text-muted-foreground text-xs">
+                                            (Recommended) Removes points that are at the exact same location
                                         </p>
                                     </div>
-                                ) : (
-                                    <div className="mt-4 flex items-center rounded bg-yellow-100 p-2 text-yellow-800">
-                                        <AlertTriangle className="mr-2 h-4 w-4" />
-                                        <p className="text-sm">No points with timestamps found in the selected files</p>
-                                    </div>
-                                ) }
+                                </div>
                             </div>
                         </TabsContent>
 
@@ -379,36 +361,65 @@ export function GpxMerger() {
                             <div className="mt-4 rounded-md border p-4">
                                 <h3 className="mb-2 font-medium text-lg">Simplified Merge</h3>
                                 <p className="mb-4 text-muted-foreground text-sm">
-                                    Files will be merged and then simplified to reduce the number of points while
-                                    preserving the overall shape of the track.
+                                    <strong>Best for:</strong> Reducing file size while preserving track shape.
+                                    <br />
+                                    <strong>How it works:</strong> First merges files (by time if elevation data is
+                                    included, sequentially otherwise), then reduces the number of points while
+                                    maintaining the track's shape. Higher tolerance means fewer points but less
+                                    precision.
                                 </p>
 
                                 <div className="space-y-4">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="flex flex-grow flex-col space-y-2">
-                                            <Label htmlFor="simplificationTolerance">
-                                                Simplification Tolerance (meters)
-                                            </Label>
-                                            <div className="flex items-center space-x-4">
-                                                <Slider
-                                                    id="simplificationTolerance"
-                                                    min={ 0 }
-                                                    max={ 50 }
-                                                    step={ 1 }
-                                                    value={ [mergeOptions.simplificationTolerance] }
-                                                    onValueChange={ ([value]) =>
-                                                        handleMergeOptionChange("simplificationTolerance", value)
-                                                    }
-                                                    className="flex-grow"
-                                                />
-                                                <span className="w-12 text-right">
-                                                    { mergeOptions.simplificationTolerance }m
-                                                </span>
-                                            </div>
-                                            <p className="text-muted-foreground text-xs">
-                                                Higher values produce fewer points but less accurate tracks
-                                            </p>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="skipDuplicatePoints"
+                                            checked={ mergeOptions.skipDuplicatePoints }
+                                            onCheckedChange={ (checked) =>
+                                                handleMergeOptionChange("skipDuplicatePoints", checked)
+                                            }
+                                        />
+                                        <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
+                                        <p className="ml-2 text-muted-foreground text-xs">
+                                            (Recommended) Removes points that are at the exact same location
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-col space-y-2">
+                                        <Label htmlFor="simplificationTolerance">Simplification Level</Label>
+                                        <div className="flex items-center space-x-4">
+                                            <Slider
+                                                id="simplificationTolerance"
+                                                min={ 0 }
+                                                max={ 50 }
+                                                step={ 1 }
+                                                value={ [mergeOptions.simplificationTolerance] }
+                                                onValueChange={ ([value]) =>
+                                                    handleMergeOptionChange("simplificationTolerance", value)
+                                                }
+                                                className="flex-grow"
+                                            />
+                                            <span className="w-12 text-right">
+                                                { mergeOptions.simplificationTolerance }m
+                                            </span>
                                         </div>
+                                        <p className="text-muted-foreground text-xs">
+                                            Higher values = smaller file size but less precision. Recommended: 10-20m for
+                                            most tracks
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="includeElevation"
+                                            checked={ mergeOptions.includeElevation }
+                                            onCheckedChange={ (checked) =>
+                                                handleMergeOptionChange("includeElevation", checked)
+                                            }
+                                        />
+                                        <Label htmlFor="includeElevation">Preserve elevation data</Label>
+                                        <p className="ml-2 text-muted-foreground text-xs">
+                                            Keep elevation data when available (uses time-based merge as base)
+                                        </p>
                                     </div>
                                 </div>
 
@@ -435,55 +446,27 @@ export function GpxMerger() {
                             <div className="mt-4 rounded-md border p-4">
                                 <h3 className="mb-2 font-medium text-lg">Interpolated Merge</h3>
                                 <p className="mb-4 text-muted-foreground text-sm">
-                                    Files will be merged chronologically with smooth transitions between track
-                                    segments. Useful for creating continuous tracks from separate recordings.
+                                    <strong>Best for:</strong> Creating smooth transitions between tracks.
+                                    <br />
+                                    <strong>How it works:</strong> Similar to time-based merge, but adds extra points
+                                    to create smooth transitions between track segments. Best used when you have gaps
+                                    between recordings that you want to fill.
                                 </p>
-
-                                <div className="mb-4 flex items-center space-x-4">
-                                    <Switch
-                                        id="autoSmoothTransitions"
-                                        checked={ mergeOptions.autoSmoothTransitions }
-                                        onCheckedChange={ (checked) =>
-                                            handleMergeOptionChange("autoSmoothTransitions", checked)
-                                        }
-                                    />
-                                    <Label htmlFor="autoSmoothTransitions">
-                                        Auto-smooth transitions between tracks
-                                    </Label>
-                                </div>
-
-                                <div className="mb-4 flex items-center space-x-4">
-                                    <div className="flex flex-grow flex-col space-y-2">
-                                        <Label htmlFor="timeGapInterpolated">Time Gap Threshold (minutes)</Label>
-                                        <div className="flex items-center space-x-4">
-                                            <Slider
-                                                id="timeGapInterpolated"
-                                                min={ 0 }
-                                                max={ 120 }
-                                                step={ 5 }
-                                                value={ [mergeOptions.timeGapThreshold] }
-                                                onValueChange={ ([value]) =>
-                                                    handleMergeOptionChange("timeGapThreshold", value)
-                                                }
-                                                className="flex-grow"
-                                            />
-                                            <span className="w-12 text-right">{ mergeOptions.timeGapThreshold }</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                { selectedPoints.length > 0 ? (
-                                    <div className="rounded bg-muted p-2">
-                                        <p className="font-medium text-sm">
-                                            { selectedPoints.length } points in interpolated track
+                                <div className="space-y-4">
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="skipDuplicatePoints"
+                                            checked={ mergeOptions.skipDuplicatePoints }
+                                            onCheckedChange={ (checked) =>
+                                                handleMergeOptionChange("skipDuplicatePoints", checked)
+                                            }
+                                        />
+                                        <Label htmlFor="skipDuplicatePoints">Remove duplicate points</Label>
+                                        <p className="ml-2 text-muted-foreground text-xs">
+                                            (Recommended) Removes points that are at the exact same location
                                         </p>
                                     </div>
-                                ) : (
-                                    <div className="flex items-center rounded bg-yellow-100 p-2 text-yellow-800">
-                                        <AlertTriangle className="mr-2 h-4 w-4" />
-                                        <p className="text-sm">No points with timestamps found</p>
-                                    </div>
-                                ) }
+                                </div>
                             </div>
                         </TabsContent>
 

@@ -210,19 +210,94 @@ export function useMergeStrategies({
             // First create a sequential or time-based merge as the base
             if (mergeMethod === "simplified") {
                 const baseMethod = mergeOptions.includeElevation ? "byTime" : "sequential";
+                let basePoints: MergePoint[] = [];
 
+                // Get base points first
                 if (baseMethod === "byTime") {
-                    createTimeMerge();
+                    const allPoints: Array<MergePoint & { time: Date }> = [];
+                    const pointsMap = new Map<string, boolean>();
+
+                    // Collect all points with timestamps
+                    for (const file of filteredFiles) {
+                        if (!file.id) continue;
+
+                        for (let trackIndex = 0; trackIndex < file.tracks.length; trackIndex++) {
+                            const track = file.tracks[trackIndex];
+
+                            for (let pointIndex = 0; pointIndex < track.points.length; pointIndex++) {
+                                const point = track.points[pointIndex];
+
+                                if (point.time) {
+                                    try {
+                                        const timestamp = new Date(point.time);
+
+                                        // Skip duplicate points if option is enabled
+                                        if (mergeOptions.skipDuplicatePoints) {
+                                            const pointKey = `${point.lat},${point.lon}`;
+                                            if (pointsMap.has(pointKey)) continue;
+                                            pointsMap.set(pointKey, true);
+                                        }
+
+                                        allPoints.push({
+                                            sourceFileId: file.id,
+                                            trackIndex,
+                                            pointIndex,
+                                            time: timestamp,
+                                        });
+                                    } catch {
+                                        console.error("Invalid timestamp:", point.time);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Sort points by timestamp
+                    allPoints.sort((a, b) => a.time.getTime() - b.time.getTime());
+                    basePoints = allPoints.map(({ sourceFileId, trackIndex, pointIndex }) => ({
+                        sourceFileId,
+                        trackIndex,
+                        pointIndex,
+                    }));
                 } else {
-                    createSequentialMerge();
+                    // Sequential merge
+                    const newMergePoints: MergePoint[] = [];
+                    const pointsMap = new Map<string, boolean>();
+
+                    for (const fileId of mergeOptions.fileOrder) {
+                        const file = filteredFiles.find((f) => f.id === fileId);
+                        if (!file || !file.id) continue;
+
+                        for (let trackIndex = 0; trackIndex < file.tracks.length; trackIndex++) {
+                            const track = file.tracks[trackIndex];
+
+                            for (let pointIndex = 0; pointIndex < track.points.length; pointIndex++) {
+                                const point = track.points[pointIndex];
+
+                                // Skip duplicate points if option is enabled
+                                if (mergeOptions.skipDuplicatePoints) {
+                                    const pointKey = `${point.lat},${point.lon}`;
+                                    if (pointsMap.has(pointKey)) continue;
+                                    pointsMap.set(pointKey, true);
+                                }
+
+                                newMergePoints.push({
+                                    sourceFileId: file.id,
+                                    trackIndex,
+                                    pointIndex,
+                                });
+                            }
+                        }
+                    }
+                    basePoints = newMergePoints;
                 }
 
                 // Apply simplification algorithm (Douglas-Peucker)
-                if (selectedPoints.length > 0 && mergeOptions.simplificationTolerance > 0) {
+                if (basePoints.length > 0 && mergeOptions.simplificationTolerance > 0) {
                     // Convert MergePoints to actual GpxPoints for simplification
                     const pointsToSimplify: { point: GpxPoint; mergePoint: MergePoint }[] = [];
 
-                    for (const mergePoint of selectedPoints) {
+                    for (const mergePoint of basePoints) {
                         const file = filteredFiles.find(f => f.id === mergePoint.sourceFileId);
                         if (!file) continue;
 
@@ -265,8 +340,16 @@ export function useMergeStrategies({
                         }
 
                         setSelectedPoints(simplifiedMergePoints);
-                        toast.success(`Simplified to ${simplifiedMergePoints.length} points (${Math.round(simplifiedMergePoints.length / selectedPoints.length * 100)}% of original)`);
+
+                        // Only show toast if points were actually simplified
+                        if (simplifiedMergePoints.length < basePoints.length) {
+                            toast.success(`Simplified to ${simplifiedMergePoints.length} points (${Math.round(simplifiedMergePoints.length / basePoints.length * 100)}% of original)`, {
+                                id: 'simplification-result' // Use a consistent ID to prevent duplicate toasts
+                            });
+                        }
                     }
+                } else {
+                    setSelectedPoints(basePoints);
                 }
             }
         } finally {
@@ -278,6 +361,8 @@ export function useMergeStrategies({
         mergeMethod,
         mergeOptions.simplificationTolerance,
         mergeOptions.includeElevation,
+        mergeOptions.skipDuplicatePoints,
+        mergeOptions.fileOrder,
         selectedPoints,
         setSelectedPoints,
         filteredFiles,
