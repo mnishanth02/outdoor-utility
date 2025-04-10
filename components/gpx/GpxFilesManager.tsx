@@ -13,17 +13,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
-import { CheckSquare, Eye, Trash2, FileX, Maximize2, Edit, RefreshCcw } from "lucide-react";
+import { CheckSquare, Eye, Trash2, FileX, Edit, RefreshCcw, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
-import { calculateDistance } from "@/lib/gpx-utils";
+import { calculateDistance, convert } from "@/lib/gpx-utils";
 
 export function GpxFilesManager() {
     const { storedFiles, setActiveFile, removeStoredFile, gpxData, isLoading, error } = useGpx();
     const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-    const [fullscreenFileId, setFullscreenFileId] = useState<string | null>(null);
     const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
+    const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
     const handleToggleFile = (fileId: string) => {
         setSelectedFiles((prev) =>
@@ -46,15 +46,6 @@ export function GpxFilesManager() {
         setSelectedFiles(fileIds);
     };
 
-    const handleToggleFullscreen = (fileId: string) => {
-        if (fileId === fullscreenFileId) {
-            setFullscreenFileId(null);
-        } else {
-            setFullscreenFileId(fileId);
-            setActiveFile(fileId);
-        }
-    };
-
     const handleRemoveFile = (fileId: string) => {
         // Get file name before removing
         const fileName = storedFiles.find((file) => file.id === fileId)?.metadata.name || "File";
@@ -69,6 +60,32 @@ export function GpxFilesManager() {
         if (selectedFiles.includes(fileId)) {
             setSelectedFiles((prev) => prev.filter((id) => id !== fileId));
         }
+    };
+
+    const handleDownloadFile = (fileId: string) => {
+        const file = storedFiles.find((f) => f.id === fileId);
+        if (!file) return;
+
+        // Convert the file to GPX XML
+        const gpxContent = convert(file);
+
+        // Create a blob and download it
+        const blob = new Blob([gpxContent], { type: "application/gpx+xml" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${file.metadata.name || "track"}.gpx`;
+        document.body.appendChild(a);
+        a.click();
+
+        // Clean up
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // Show success message
+        setDownloadSuccess(`"${file.metadata.name}" has been downloaded`);
+        setTimeout(() => setDownloadSuccess(null), 3000);
     };
 
     const getTrackStatistics = (file: (typeof storedFiles)[0]) => {
@@ -174,6 +191,13 @@ export function GpxFilesManager() {
                         </div>
                     ) }
 
+                    { downloadSuccess && (
+                        <div className="mb-4 flex items-center rounded-md border border-green-200 bg-green-50 p-3 text-green-600 text-sm">
+                            <Download className="mr-2 h-5 w-5" />
+                            <span>{ downloadSuccess }</span>
+                        </div>
+                    ) }
+
                     <div className="flex items-center justify-between">
                         <Button variant="outline" size="sm" onClick={ handleSelectAll }>
                             <CheckSquare className="mr-2 h-4 w-4" />
@@ -257,12 +281,12 @@ export function GpxFilesManager() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    onClick={ () => handleToggleFullscreen(file.id || "") }
+                                                                    onClick={ () => handleDownloadFile(file.id || "") }
                                                                 >
-                                                                    <Maximize2 className="h-4 w-4" />
+                                                                    <Download className="h-4 w-4" />
                                                                 </Button>
                                                             </TooltipTrigger>
-                                                            <TooltipContent>Fullscreen view</TooltipContent>
+                                                            <TooltipContent>Download GPX</TooltipContent>
                                                         </Tooltip>
                                                     </TooltipProvider>
 

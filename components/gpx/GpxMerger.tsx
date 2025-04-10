@@ -1,6 +1,6 @@
 "use client";
 
-import { useGpx, type GpxData, type MergePoint, type MergeConfig } from "@/contexts/GpxContext";
+import { useGpx, type GpxData, type MergePoint, type MergeConfig, type GpxPoint } from "@/contexts/GpxContext";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { ChevronLeft, Save, AlertTriangle, RotateCcw } from "lucide-react";
+import { ChevronLeft, Save, AlertTriangle, RotateCcw, Download } from "lucide-react";
 import Link from "next/link";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -24,6 +24,8 @@ import { useMergeStrategies } from "./merge-strategies/useMergeStrategies";
 import { FileListItem } from "./merge-components/FileListItem";
 import { MergePreview } from "./merge-components/MergePreview";
 import { AdvancedOptions } from "./merge-components/AdvancedOptions";
+import { convert } from "@/lib/gpx-utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export type MergeMethod = "sequential" | "byTime" | "interpolated" | "simplified";
 
@@ -53,6 +55,7 @@ export function GpxMerger() {
     const [files, setFiles] = useState<GpxData[]>([]);
     const [filteredFiles, setFilteredFiles] = useState<GpxData[]>([]);
     const [fileSelections, setFileSelections] = useState<Record<string, boolean>>({});
+    const [selectionError, setSelectionError] = useState<string | null>(null);
     const [mergeOptions, setMergeOptions] = useState<MergeOptions>({
         autoSmoothTransitions: true,
         preserveOriginalFiles: false,
@@ -116,6 +119,14 @@ export function GpxMerger() {
     useEffect(() => {
         const filtered = files.filter((file) => file.id && fileSelections[file.id]);
         setFilteredFiles(filtered);
+
+        // Clear any previous selection error
+        setSelectionError(null);
+
+        // Show error if less than 2 files are selected
+        if (filtered.length < 2 && files.length >= 2) {
+            setSelectionError("Please select at least two files to merge");
+        }
     }, [files, fileSelections]);
 
     // Create initial merge config when files or options change
@@ -186,7 +197,16 @@ export function GpxMerger() {
     };
 
     const toggleFileSelection = (fileId: string, checked: boolean) => {
-        setFileSelections((prev) => ({ ...prev, [fileId]: checked }));
+        const newSelections = { ...fileSelections, [fileId]: checked };
+        const selectedCount = Object.values(newSelections).filter(Boolean).length;
+
+        // Prevent deselecting if it would leave less than 2 files selected
+        if (!checked && selectedCount < 2) {
+            toast.error("You must keep at least two files selected for merging");
+            return;
+        }
+
+        setFileSelections(newSelections);
     };
 
     const handleMergeMethodChange = (value: string) => {
@@ -213,6 +233,51 @@ export function GpxMerger() {
         mergeFiles(mergeConfig);
         toast.success("Files merged successfully");
         router.push("/");
+    };
+
+    const handleDownload = () => {
+        if (selectedPoints.length === 0) {
+            toast.error("No points selected for downloading");
+            return;
+        }
+
+        // Create a new GpxData object with the merged points
+        const mergedData: GpxData = {
+            metadata: {
+                name: "Merged Track",
+                description: `Merged from ${filteredFiles.length} files using ${mergeMethod} method`,
+                time: new Date().toISOString(),
+            },
+            tracks: [
+                {
+                    name: "Merged Track",
+                    points: selectedPoints.map(point => {
+                        const sourceFile = filteredFiles.find(f => f.id === point.sourceFileId);
+                        if (!sourceFile || !sourceFile.tracks[point.trackIndex]) return null;
+                        return sourceFile.tracks[point.trackIndex].points[point.pointIndex];
+                    }).filter((p): p is GpxPoint => p !== null),
+                },
+            ],
+        };
+
+        // Convert the merged data to GPX XML
+        const gpxContent = convert(mergedData);
+
+        // Create a blob and download it
+        const blob = new Blob([gpxContent], { type: "application/gpx+xml" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `merged_track_${new Date().toISOString().split('T')[0]}.gpx`;
+        document.body.appendChild(a);
+        a.click();
+
+        // Clean up
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast.success("GPX file downloaded successfully");
     };
 
     const resetOptions = () => {
@@ -260,6 +325,17 @@ export function GpxMerger() {
                         <p className="mb-4 text-muted-foreground text-sm">
                             Select the files to include in the merge and arrange them in the desired order.
                         </p>
+
+                        { selectionError && (
+                            <Alert className="mb-4 border-amber-100 bg-amber-50">
+                                <div className="flex items-center">
+                                    <AlertTriangle className="mr-2 h-4 w-4 text-amber-500" />
+                                    <AlertDescription className="text-amber-700">
+                                        { selectionError }
+                                    </AlertDescription>
+                                </div>
+                            </Alert>
+                        ) }
 
                         <ScrollArea className="h-[200px] rounded-md border">
                             <div className="space-y-2 p-2">
@@ -492,11 +568,11 @@ export function GpxMerger() {
                 </div>
             </CardContent>
 
-            <CardFooter className="flex justify-between">
-                <Button variant="outline" asChild>
+            <CardFooter className="flex justify-between border-t pt-6">
+                <Button variant="secondary" asChild className="flex items-center transition-colors hover:bg-slate-100">
                     <Link href="/">
                         <ChevronLeft className="mr-2 h-4 w-4" />
-                        Back
+                        Back to Files
                     </Link>
                 </Button>
 
@@ -505,7 +581,15 @@ export function GpxMerger() {
                         <RotateCcw className="mr-2 h-4 w-4" />
                         Reset Options
                     </Button>
-                    <Button onClick={ handleMerge } disabled={ selectedPoints.length === 0 }>
+                    <Button
+                        variant="outline"
+                        onClick={ handleDownload }
+                        disabled={ selectedPoints.length === 0 || filteredFiles.length < 2 }
+                    >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download GPX
+                    </Button>
+                    <Button onClick={ handleMerge } disabled={ selectedPoints.length === 0 || filteredFiles.length < 2 }>
                         <Save className="mr-2 h-4 w-4" />
                         Merge Files
                     </Button>
